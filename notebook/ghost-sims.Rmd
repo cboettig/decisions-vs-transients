@@ -1,0 +1,101 @@
+---
+title: "simulation & inference of transients"
+author: "Carl Boettiger"
+date: "5/30/2019"
+output: github_document
+---
+  
+```{r}
+library(tidyverse)
+library(nimble)
+```
+  
+```{r}
+#a = 0.023
+r = 0.05
+p <- list(r = .05, K = 2, Q = 5, H = .38, sigma = .02, a=0.023, N = 1e3)
+growth <- function(x, p) x * p$r * (1 - x / p$K)
+consumption <- function(x,p) p$a * x ^ p$Q / (x^p$Q + p$H^p$Q)
+```
+
+```{r}
+theory <- 
+  tibble(x= seq(0,2, length.out = 100)) %>%
+  mutate(g = growth(x,p), 
+         c = consumption(x,p)) %>%
+  mutate(potential = - cumsum(g - c)) %>%
+  gather(curve, y, -x, -potential) 
+```
+
+```{r noisy_switch}
+theory %>%
+  ggplot(aes(x, y, col=curve)) +
+  geom_line(lwd=1)
+```
+
+```{r}
+theory %>%
+  ggplot(aes(x, potential)) + 
+  geom_line(lwd=1)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+```{r}
+library(nimble)
+library(tidyverse)
+# Define stochastic model in BUGS notation
+may  <- nimble::nimbleCode({
+  
+  x[1] <- x0
+  for(t in 1:(N-1)){
+    # Determinstic mean looks like standard R
+    mu[t] <- x[t] + x[t] * r * (1 - x[t] / K)  - a * x[t] ^ Q / (x[t] ^ Q + H ^ Q)
+    # Note the use of ~ in BUGS to show 'distributed as normal' 
+    y[t+1] ~ dnorm(mu[t], sd = sigma)
+    x[t+1] <- max(y[t+1],0)
+  }
+  
+})
+model <- nimbleModel(may,constants = p, inits = list(x0 = 0.2))
+cmodel <- model #compileNimble(model)
+set.seed(123456)
+simulate(cmodel)
+df <- tibble(t = seq_along(cmodel$x), x = cmodel$x)
+```
+
+```{r}
+df %>% ggplot(aes(t,x)) + geom_point()
+df %>% write_csv("../data/ex.csv")
+```
+
+
+Let's do 100 replicates
+
+```{r}
+set.seed(123)
+
+df <- map_dfr(1:100, 
+  function(i){
+    simulate(cmodel)
+    tibble(t = seq_along(cmodel$x), x = cmodel$x, reps = i)
+   })
+```
+
+```{r}
+df %>% 
+  #filter(t %in% seq(1000, 2000, by = 1)) %>% 
+  ggplot(aes(t,x, group=reps)) + geom_line(alpha=.2)
+
+df %>% write_csv("../data/reps.csv")
+```
