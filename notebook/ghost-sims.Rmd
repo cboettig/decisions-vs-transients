@@ -97,5 +97,5 @@ df %>% ggplot(aes(t, x, group=reps)) +
 
 
 ```{r}
-#df %>% write_csv("../data/reps.csv")
+df %>% write_csv("../data/reps.csv")
 ```

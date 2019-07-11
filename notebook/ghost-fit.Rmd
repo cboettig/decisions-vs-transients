@@ -17,9 +17,29 @@ data <- read_csv("../data/reps.csv")
 data %>% ggplot(aes(t,x, group=reps)) + geom_line(alpha=0.1)
 ```
 
+Divide this data into several groups based on 
+
 ```{r}
-wide <- data %>% spread(reps, x) %>% select(-t) %>% 
-  select(2) %>% # which / how many reps we use
+means <- data %>% group_by(reps) %>% summarise(ave = mean(x)) %>% arrange(ave)
+
+lows <- means %>% dplyr::slice(1:10) %>% pull(reps)
+highs <- means %>% dplyr::slice((n()-10):n()) %>% pull(reps)
+coding <- function(reps) case_when(
+  reps %in% lows ~ "low",
+  reps %in% highs ~ "high"
+)
+df <- data %>% mutate(coding = coding(reps)) %>% na.omit()
+df %>% ggplot(aes(t, x, group=reps, color = coding)) + geom_line(alpha=0.5)
+
+#means %>% ggplot(aes(ave)) + geom_histogram(binwidth = 0.02)
+
+```
+
+```{r}
+wide <- data %>% 
+  filter(reps %in% highs) %>%
+  spread(reps, x) %>%
+  select(-t) %>% 
   as.matrix()
 n <- dim(wide)[1]
 
@@ -64,8 +84,13 @@ summary(draws)
 ```
 
 ```{r}
-#bayesplot::mcmc_trace(draws)
+bayesplot::mcmc_trace(draws)
 ```
+
+
+
+
+
 
 ```{r}
 samples <-  
