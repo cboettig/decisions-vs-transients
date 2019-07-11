@@ -13,8 +13,8 @@ set.seed(123456)
 
 
 ```{r}
-data <- read_csv("../data/reps.csv")
-data %>% ggplot(aes(t,x, group=reps)) + geom_line(alpha=0.1)
+data <- read_csv("../data/reps.csv") # %>% filter(t %in% seq(0,4000, by=4))
+data %>% ggplot(aes(t,x, group=reps)) + geom_line(alpha=0.02)
 ```
 
 Divide this data into several groups based on 
@@ -35,6 +35,9 @@ df %>% ggplot(aes(t, x, group=reps, color = coding)) + geom_line(alpha=0.5)
 
 ```
 
+
+## highs
+
 ```{r}
 wide <- data %>% 
   filter(reps %in% highs) %>%
@@ -47,30 +50,31 @@ n <- dim(wide)[1]
 
 
 ```{r}
-x_t1 <- wide[-1,] # data$x[-1]
-x_t <- wide[-n,] # data$x[-100]
-dim(x_t)
-dim(x_t1)
-#tibble(x_t, x_t1) %>% ggplot(aes(x_t, x_t1)) + geom_point()
+x_t1 <- wide[-1,]
+x_t <- wide[-n,] 
 ```
 
 ```{r}
-#r <- 0.05 
+r <- 0.05 
 Q <- 5
-#sigma <- 0.02
-#a <- 0.0233
-K <- uniform(0, 10)
-H <- uniform(0,  2)
+K <- 2
+# a <- 0.0233
+H <- 0.38
+sigma <- 0.02
+
+# r <- uniform(0, 1)
+# Q <- uniform(0, 10)
+#K <- uniform(0, 10)
 a <- uniform(0, 1)
-r <- uniform(0, 1)
-#Q <- uniform(0, 10)
-sigma <- uniform(0, 1)
+# H <- uniform(0,  2)
+#sigma <- uniform(0, 1)
+
 
 
 # Model
 mean <- x_t + r * x_t * (1 - x_t / K) - a * x_t ^ Q / (x_t ^ Q + H ^ Q)
 distribution(x_t1) <- normal(mean, sigma)
-m <- model(K, a, H, sigma, r)
+m <- model(a)
 ```
 
 ```{r }
@@ -108,7 +112,13 @@ samples %>%
 
 ```{r}
 #Q = 5
-true <- data.frame(a = 0.023, r = .05, K = 2, H = .38, sigma = .02) %>%
+true <- 
+  data.frame(a = 0.023 #, 
+             #r = .05, 
+             #K = 2, 
+             #H = .38, 
+             #sigma = .02
+             ) %>%
   gather(variable, value)
 ```
 
@@ -121,6 +131,45 @@ samples %>% ggplot() +
 ```
 
 
+## lows
 
 
+```{r}
+wide <- data %>% 
+  filter(reps %in% lows) %>%
+  spread(reps, x) %>%
+  select(-t) %>% 
+  as.matrix()
+n <- dim(wide)[1]
 
+```
+
+
+```{r}
+x_t1 <- wide[-1,]
+x_t <- wide[-n,] 
+```
+
+
+```{r}
+mean <- x_t + r * x_t * (1 - x_t / K) - a * x_t ^ Q / (x_t ^ Q + H ^ Q)
+distribution(x_t1) <- normal(mean, sigma)
+m <- model(a)
+```
+
+```{r }
+system.time({
+  draws <- mcmc(m, n_samples = 1000, warmup = 3000, chains = 4, verbose = FALSE)
+})
+```
+
+```{r}
+bayesplot::mcmc_trace(draws)
+```
+
+```{r}
+samples %>% ggplot() + 
+  geom_histogram(aes(value), bins = 30)  +
+  geom_vline(data = true, aes(xintercept = value), col = "red", lwd = 1) + 
+  facet_wrap(~variable, scales = "free")
+```
