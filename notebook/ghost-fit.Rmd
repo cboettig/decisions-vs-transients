@@ -156,7 +156,7 @@ x_t <- wide[-n,]
 
 ```{r}
 mean <- x_t + r * x_t * (1 - x_t / K) - a * x_t ^ Q / (x_t ^ Q + H ^ Q)
-distribution(x_t1) <- normal(mean, sigma)
+distribution(x_t1) <- normal(mean, sigma * x_t)
 m <- model(a)
 ```
 
