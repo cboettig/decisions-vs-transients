@@ -102,7 +102,10 @@ samples <-
           function(x) data.frame(x, t = 1:dim(x)[1]), 
           .id = "chain") %>% 
   gather(variable, value, -t, -chain)
+```
 
+```{r include=FALSE}
+## manual version of bayesplot::mcmc_trace()
 samples %>%  
   ggplot(aes(t,value, col=chain, group=chain)) + 
   geom_line() +
