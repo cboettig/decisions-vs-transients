@@ -1,0 +1,43 @@
+---
+title: "Conservation decision-making under long transients"
+author: "Carl Boettiger"
+institute: "UC Berkeley"
+date: "`r Sys.Date()`"
+output:
+  xaringan::moon_reader:
+    lib_dir: libs
+    nature:
+      highlightStyle: github
+      highlightLines: true
+      countIncrementalSlides: false
+---
+
+background-image: url(img/royalsociety/penguin-swim.jpg)
+background-position: center
+background-size: 120%
+class: center, top
+
+
+```{r setup, include=FALSE}
+options(htmltools.dir.version = FALSE)
+```
+
+# Decision-making under transients: what could go wrong?
+
+???
+
+Image credit: [Royal Society Photo Competition](https://royalsociety.org/journals/publishing-activities/photo-competition/)
+
+---
+
+class: center, middle
+
+# Ghost Attractors
+
+
+---
+class: inverse, center, middle
+
+# Acknowledgements
+
+
