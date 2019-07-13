@@ -74,7 +74,7 @@ system.time({
 ```
 
     ##    user  system elapsed 
-    ##   1.309   0.193  27.663
+    ##   0.652   0.110   5.750
 
 ``` r
 det <- det_sim(may,p) %>% mutate(reps=1)
@@ -91,5 +91,5 @@ df %>% ggplot(aes(t, x, group=reps)) +
 ![](ghost-sims_files/figure-gfm/unnamed-chunk-8-1.png)<!-- -->
 
 ``` r
-#df %>% write_csv("../data/reps.csv")
+df %>% write_csv("../data/reps.csv")
 ```

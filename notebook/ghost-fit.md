@@ -1,25 +1,35 @@
----
-title: "greta.Rmd"
-author: "Carl Boettiger"
-date: "5/30/2019"
-output: github_document
----
+greta.Rmd
+================
+Carl Boettiger
+5/30/2019
 
-```{r message = FALSE, warning=FALSE}
+``` r
 library(tidyverse)
 library(greta) # remotes::install_github("greta-dev/greta")
 set.seed(123456)
 ```
 
-
-```{r}
+``` r
 data <- read_csv("../data/reps.csv") # %>% filter(t %in% seq(0,4000, by=4))
+```
+
+    ## Parsed with column specification:
+    ## cols(
+    ##   reps = col_double(),
+    ##   t = col_double(),
+    ##   x = col_double()
+    ## )
+
+``` r
 data %>% ggplot(aes(t,x, group=reps)) + geom_line(alpha=0.02)
 ```
 
-Divide this data into several groups based on 
+![](ghost-fit_files/figure-gfm/unnamed-chunk-2-1.png)<!-- -->
 
-```{r}
+Divide this data into several groups based
+on
+
+``` r
 means <- data %>% group_by(reps) %>% summarise(ave = mean(x)) %>% arrange(ave)
 
 lows <- means %>% dplyr::slice(1:10) %>% pull(reps)
@@ -30,31 +40,31 @@ coding <- function(reps) case_when(
 )
 df <- data %>% mutate(coding = coding(reps)) %>% na.omit()
 df %>% ggplot(aes(t, x, group=reps, color = coding)) + geom_line(alpha=0.5)
-
-#means %>% ggplot(aes(ave)) + geom_histogram(binwidth = 0.02)
-
 ```
 
+![](ghost-fit_files/figure-gfm/unnamed-chunk-3-1.png)<!-- -->
+
+``` r
+#means %>% ggplot(aes(ave)) + geom_histogram(binwidth = 0.02)
+```
 
 ## highs
 
-```{r}
+``` r
 wide <- data %>% 
   filter(reps %in% highs) %>%
   spread(reps, x) %>%
   select(-t) %>% 
   as.matrix()
 n <- dim(wide)[1]
-
 ```
 
-
-```{r}
+``` r
 x_t1 <- wide[-1,]
 x_t <- wide[-n,] 
 ```
 
-```{r}
+``` r
 r <- 0.05 
 Q <- 5
 K <- 2
@@ -77,35 +87,49 @@ distribution(x_t1) <- normal(mean, sigma)
 m <- model(a)
 ```
 
-```{r }
+``` r
 system.time({
   draws <- mcmc(m, n_samples = 1000, warmup = 3000, chains = 4, verbose = FALSE)
 })
 ```
 
-```{r}
+    ##    user  system elapsed 
+    ## 672.534 146.408 170.526
+
+``` r
 summary(draws)
 ```
 
-```{r}
+    ## 
+    ## Iterations = 1:1000
+    ## Thinning interval = 1 
+    ## Number of chains = 4 
+    ## Sample size per chain = 1000 
+    ## 
+    ## 1. Empirical mean and standard deviation for each variable,
+    ##    plus standard error of the mean:
+    ## 
+    ##           Mean             SD       Naive SE Time-series SE 
+    ##      2.240e-02      9.577e-05      1.514e-06      2.332e-06 
+    ## 
+    ## 2. Quantiles for each variable:
+    ## 
+    ##    2.5%     25%     50%     75%   97.5% 
+    ## 0.02220 0.02233 0.02240 0.02246 0.02258
+
+``` r
 bayesplot::mcmc_trace(draws)
 ```
 
+![](ghost-fit_files/figure-gfm/unnamed-chunk-9-1.png)<!-- -->
 
-
-
-
-
-```{r}
+``` r
 samples <-  
   map_dfr(draws, 
           function(x) data.frame(x, t = 1:dim(x)[1]), 
           .id = "chain") %>% 
   gather(variable, value, -t, -chain)
-```
 
-```{r include=FALSE}
-## manual version of bayesplot::mcmc_trace()
 samples %>%  
   ggplot(aes(t,value, col=chain, group=chain)) + 
   geom_line() +
@@ -113,7 +137,9 @@ samples %>%
   scale_color_viridis_d()
 ```
 
-```{r}
+![](ghost-fit_files/figure-gfm/unnamed-chunk-10-1.png)<!-- -->
+
+``` r
 #Q = 5
 true <- 
   data.frame(a = 0.023 #, 
@@ -125,55 +151,55 @@ true <-
   gather(variable, value)
 ```
 
-
-```{r}
+``` r
 samples %>% ggplot() + 
   geom_histogram(aes(value), bins = 30)  +
   geom_vline(data = true, aes(xintercept = value), col = "red", lwd = 1) + 
   facet_wrap(~variable, scales = "free")
 ```
 
+![](ghost-fit_files/figure-gfm/unnamed-chunk-12-1.png)<!-- -->
 
-
-----
+-----
 
 ## lows
 
-
-```{r}
+``` r
 wide <- data %>% 
   filter(reps %in% lows) %>%
   spread(reps, x) %>%
   select(-t) %>% 
   as.matrix()
 n <- dim(wide)[1]
-
 ```
 
-
-```{r}
+``` r
 x_t1 <- wide[-1,]
 x_t <- wide[-n,] 
 ```
 
-
-```{r}
+``` r
 mean <- x_t + r * x_t * (1 - x_t / K) - a * x_t ^ Q / (x_t ^ Q + H ^ Q)
-distribution(x_t1) <- normal(mean, sigma * x_t)
+distribution(x_t1) <- normal(mean, sigma)
 m <- model(a)
 ```
 
-```{r }
+``` r
 system.time({
   draws2 <- mcmc(m, n_samples = 1000, warmup = 3000, chains = 4, verbose = FALSE)
 })
 ```
 
-```{r}
+    ##     user   system  elapsed 
+    ## 1347.047  205.638  225.499
+
+``` r
 bayesplot::mcmc_trace(draws2)
 ```
 
-```{r}
+![](ghost-fit_files/figure-gfm/unnamed-chunk-17-1.png)<!-- -->
+
+``` r
 samples2 <-  
   map_dfr(draws2, 
           function(x) data.frame(x, t = 1:dim(x)[1]), 
@@ -186,13 +212,11 @@ samples2 %>% ggplot() +
   facet_wrap(~variable, scales = "free")
 ```
 
+![](ghost-fit_files/figure-gfm/unnamed-chunk-18-1.png)<!-- -->
 
 ## Random sample
 
-
-
-```{r}
-
+``` r
 random <- sample(unique(data$reps), 1)
 wide <- data %>% 
   filter(reps %in% random) %>%
@@ -200,33 +224,35 @@ wide <- data %>%
   select(-t) %>% 
   as.matrix()
 n <- dim(wide)[1]
-
 ```
 
-
-```{r}
+``` r
 x_t1 <- wide[-1,]
 x_t <- wide[-n,] 
 ```
 
-
-```{r}
+``` r
 mean <- x_t + r * x_t * (1 - x_t / K) - a * x_t ^ Q / (x_t ^ Q + H ^ Q)
 distribution(x_t1) <- normal(mean, sigma)
 m <- model(a)
 ```
 
-```{r }
+``` r
 system.time({
   draws3 <- mcmc(m, n_samples = 1000, warmup = 3000, chains = 4, verbose = FALSE)
 })
 ```
 
-```{r}
+    ##     user   system  elapsed 
+    ## 1473.513  237.167  243.495
+
+``` r
 bayesplot::mcmc_trace(draws3)
 ```
 
-```{r}
+![](ghost-fit_files/figure-gfm/unnamed-chunk-23-1.png)<!-- -->
+
+``` r
 samples3 <-  
   map_dfr(draws3, 
           function(x) data.frame(x, t = 1:dim(x)[1]), 
@@ -239,6 +265,4 @@ samples3 %>% ggplot() +
   facet_wrap(~variable, scales = "free")
 ```
 
-
-```{r}
-```
+![](ghost-fit_files/figure-gfm/unnamed-chunk-24-1.png)<!-- -->
