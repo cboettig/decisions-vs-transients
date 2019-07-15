@@ -96,7 +96,7 @@ df %>% mutate(state = states[state], action = actions[action]) %>%
 Range of possible a that covers tipping in both directions:
 
 ```{r}
-possible_a <- seq(.26, .33, by = 0.01)
+possible_a <- seq(.25, .34, by = 0.005)
 
 
 true_a <- 0.29
@@ -123,7 +123,7 @@ reward <- models[[1]][["reward"]]
 ## Small a assumption
 
 ```{r}
-mu <- possible_a[true_i - 2]
+mu <- possible_a[true_i - 8]
 prior <- dnorm(possible_a, mu, 0.01)
 prior <- prior / sum(prior)
 ```
@@ -176,7 +176,7 @@ sim <- mdp_learning(transition, reward, discount,
 ## large a assumption
 
 ```{r}
-mu <- possible_a[true_i + 2]
+mu <- possible_a[true_i + 8]
 prior <- dnorm(possible_a, mu, 0.01)
 prior <- prior / sum(prior)
 ```
@@ -246,11 +246,11 @@ tibble(x = states,
 ```
 
 ```{r}
-sim <- mdp_learning(transition[true_i], reward, discount, 
+sim <- mdp_learning(transition, reward, discount, 
                     x0 = x0, 
                     Tmax = Tmax, 
                     true_transition = transition[[true_i]],
-                    model_prior = 1, # prior,
+                    model_prior = prior,
                     type = "value iteration",
                     epsilon = 1e-2)
 ```
