@@ -116,6 +116,12 @@ tibble(state = states,
 
 
 ```{r}
+x0 <- which.min(abs(states - 0.1))
+```
+
+
+
+```{r}
 no_policy <- numeric(length(states)) + 1
 
 df <- mdp_planning(m_true$transition, m_true$reward, discount, model_prior = c(1), 
@@ -239,6 +245,7 @@ sim <- mdp_learning(transition, reward, discount,
 ```
 
 
-
+```{r}
+```
 
 
