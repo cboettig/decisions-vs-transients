@@ -5,6 +5,7 @@ institute: "UC Berkeley"
 date: "`r Sys.Date()`"
 output:
   xaringan::moon_reader:
+    css: ["default", "custom.css"]
     lib_dir: libs
     nature:
       highlightStyle: github
@@ -22,22 +23,96 @@ class: center, top
 options(htmltools.dir.version = FALSE)
 ```
 
-# Decision-making under transients: what could go wrong?
+# Decisions vs transient dynamics: what could possibly go wrong?
 
 ???
 
 Image credit: [Royal Society Photo Competition](https://royalsociety.org/journals/publishing-activities/photo-competition/)
 
----
 
-class: center, middle
+
+---
+background-image: linear-gradient(to right, rgba(150, 150, 150, .6), rgba(150, 150, 150, .9)), url(img/royalsociety/pensive-polarbear.jpg)
+background-size: 120%
+class: center, middle, inverse
+
+# in an era of predictive black-box models...
+
+
+---
+background-image: linear-gradient(to right, rgba(150, 150, 150, .6), rgba(150, 150, 150, .9)), url(img/royalsociety/pensive-polarbear.jpg)
+background-size: 120%
+class: center, middle, inverse
+
+# ... a need for theory & process-based models
+
+---
+background-image: linear-gradient(to right, rgba(50, 50, 50, .6), rgba(50, 50, 50, .9)), url(img/royalsociety/whale-shark.jpg)
+background-size: 120%
+class: center, middle, inverse
 
 # Ghost Attractors
 
 
 ---
-class: inverse, center, middle
+background-image: linear-gradient(to right, rgba(50, 50, 50, .6), rgba(50, 50, 50, .9)), url(img/royalsociety/whale-shark.jpg)
+background-size: 120%
+class: center, top, inverse
+
+# Ghost Attractors
+
+![](img/ghost-invert.png)
+
+
+
+
+---
+background-image: linear-gradient(to right, rgba(50, 50, 50, .6), rgba(50, 50, 50, .9)), url(img/royalsociety/reef-shark.jpg)
+background-size: 120%
+class: center, top, inverse
+
+
+
+---
+background-image: linear-gradient(to right, rgba(50, 50, 50, .6), rgba(50, 50, 50, .9)), url(img/royalsociety/snake.jpg)
+background-size: 120%
+class: center, top, inverse
+
+
+---
+background-image: linear-gradient(to right, rgba(50, 50, 50, .6), rgba(50, 50, 50, .9)), url(img/royalsociety/pensive-polarbear.jpg)
+background-size: 120%
+class: center, top, inverse
+
+
+---
+background-image: linear-gradient(to right, rgba(50, 50, 50, .6), rgba(50, 50, 50, .9)), url(img/royalsociety/gentoo-penguin.jpg)
+background-size: 120%
+class: center, top, inverse
+
+
+---
+background-image: linear-gradient(to right, rgba(50, 50, 50, .6), rgba(50, 50, 50, .9)), url(img/royalsociety/eagle-ray.jpg)
+background-size: 120%
+class: center, top, inverse
+
+
+
+
+
+---
+class: center, middle
+background-image: linear-gradient(to right, rgba(50, 50, 50, .6), rgba(50, 50, 50, .9)), url(img/royalsociety/bohemian-waxwing.jpg)
+background-size: 120%
+
 
 # Acknowledgements
 
+![](img/hastings.jpg) 
 
+![](img/nimbios.jpg)
+
+<!--
+- Lizzie Wolkovich
+- Henry Scharf
+-->
