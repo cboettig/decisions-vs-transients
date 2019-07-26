@@ -8,6 +8,7 @@ output: github_document
 ```{r message = FALSE}
 library(tidyverse)
 library(furrr)
+set.seed(12345)
 ```
   
 ```{r}
@@ -20,8 +21,8 @@ consumption <- function(x, p) p$a * x ^ p$Q / (x^p$Q + p$H^p$Q)
 theory <- 
   function(p){
     tibble(x= seq(0,2, length.out = 100)) %>%
-    mutate(g = growth(x,p), 
-           c = consumption(x,p)) %>%
+    mutate(growth = growth(x,p), 
+           consumption = consumption(x,p)) %>%
     mutate(potential = - cumsum(g - c)) %>%
     gather(curve, y, -x, -potential) 
 }
@@ -52,7 +53,7 @@ stochastic_sim <- function(f, p){
   dBt <- rnorm(p$N, 0, p$sigma)
   for(t in 1:(p$N-1)){
     x[t+1] <- max( 
-                  f(x[t], p) + x[t] * dBt[t],  # arguably x[t] * dB[t] would be a better model!
+                  f(x[t], p) + x[t] * dBt[t],
                   0)
   }
   data.frame(t = 1:p$N, x)
@@ -68,6 +69,12 @@ det_sim <- function(f, p){
 }
 ```
 
+
+
+```{r}
+det <- det_sim(may,p) 
+det %>% ggplot(aes(t, x)) + geom_line() + theme_bw()
+```
 
 
 ```{r}

@@ -28,8 +28,10 @@ coding <- function(reps) case_when(
   reps %in% lows ~ "low",
   reps %in% highs ~ "high"
 )
-df <- data %>% mutate(coding = coding(reps)) %>% na.omit()
-df %>% ggplot(aes(t, x, group=reps, color = coding)) + geom_line(alpha=0.5)
+extremes <- data %>% mutate(coding = coding(reps)) %>% na.omit()
+
+write_csv(extremes, "../data/extremes.csv")
+extremes %>% ggplot(aes(t, x, group=reps, color = coding)) + geom_line(alpha=0.5)
 
 #means %>% ggplot(aes(ave)) + geom_histogram(binwidth = 0.02)
 

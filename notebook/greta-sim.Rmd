@@ -1,0 +1,73 @@
+---
+title: "simulation & inference of transients"
+author: "Carl Boettiger"
+date: "5/30/2019"
+output: github_document
+---
+
+
+```{r}
+
+library(nimble)
+
+logistic  <- nimbleCode({
+  K ~ dunif(0,2)
+  r ~ dunif(0,1)
+  sigma ~ dunif(0,1)
+  x[1] <- x0
+  for(t in 1:(N-1)){
+    mu[t] <- x[t] + x[t] * r * (1 - x[t] / K) 
+    y[t] <- x[t] * sigma
+    x[t+1] ~ dnorm(mu[t], sd = y[t])
+  }
+  
+})
+
+
+constants <- list(N = 1e2, x0 = 0.2)
+inits <- list(r = 0.05, K = 2, sigma = 0.02)
+
+model <- nimbleModel(logistic, constants = constants, inits = inits)
+```
+
+```{r}
+set.seed(123)
+simulate(model, nodes = c("mu", "x", "y"))
+```
+
+```{r}
+df <- tibble(t = seq_along(model$x), x = model$x)
+df %>% ggplot(aes(t,x)) + geom_point()
+
+```
+
+
+
+```{r message = FALSE, warning=FALSE}
+library(tidyverse)
+library(greta) # remotes::install_github("greta-dev/greta")
+set.seed(123456)
+```
+
+```{r}
+r <- 0.05 
+K <- 2
+sigma <- 0.1
+
+# priors
+r <- uniform(0, 1)
+K <- uniform(0, 10)
+sigma <- uniform(0, 1)
+# Model
+mean <- x_t + r * x_t * (1 - x_t / K) 
+distribution(x_t1) <- normal(mean, sigma)
+m <- model(x_t, x_t1)
+```
+
+```{r}
+out <- simulate(m)
+```
+
+
+
+
