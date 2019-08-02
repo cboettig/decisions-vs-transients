@@ -1,0 +1,4 @@
+Title: Theoretical Limits to Forecasting in Ecological Systems (And What to Do About It)
+
+    Ecological Forecasting is constrained by our ability to accurately model complex phenomena.  I explore our capacity to accurately forecast sudden shifts in common ecological and environmental climate models that may contain tipping points or "ghost attractors." I illustrate how black-box modeling and forecasting approaches, including common machine learning algorithms, can fail dramatically in thse scenarios. I further illustrate that even access to the underlying process model is not sufficient to predict the tipping point.  In the second phase of this work, I present possible strategies for dealing with the immense uncertainty created by these dynamics.  Drawing on methods of decision theory, I illustrate how an adaptive manager can avoid catastrophic outcomes despite limited forecast potential of these scenarios.
+

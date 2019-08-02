@@ -11,6 +11,8 @@ output:
       highlightStyle: github
       highlightLines: true
       countIncrementalSlides: false
+      slideNumberFormat: "%current%"
+
 ---
 
 background-image: url(img/royalsociety/penguin-swim.jpg)
@@ -236,13 +238,13 @@ background-position: center
 ```{r echo=FALSE}
 data %>% ggplot(aes(t,x, group=reps)) + 
   geom_line(alpha=0.02, color = "white") + 
-  geom_line(data = det, lwd=2, color = "white")
+  geom_line(data = mean, lwd=2, color = "white")
 ```
 
 
 
 ---
-background-image: linear-gradient(to right, rgba(50, 50, 50, .8), rgba(50, 50, 50, .95)), url(img/royalsociety/gentoo-penguin.jpg)
+background-image: linear-gradient(to right, rgba(50, 50, 50, .8), rgba(50, 50, 50, .95)), url(img/royalsociety/gentoo-penguin-wtf.jpg)
 background-size: 120%
 class: center, top, inverse
 background-position: center
@@ -253,7 +255,8 @@ background-position: center
 data %>% 
   ggplot(aes(t,x, group=reps)) + 
   geom_line(alpha=0.02, color = "white") + 
-  geom_line(data = mean, lwd=2, color = rgb(.6, .6, 1))
+  geom_line(data = mean, lwd = 2, color = "white") +
+  geom_line(data = det, lwd = 2, color = rgb(.6, .6, 1)) 
 ```
 
 
@@ -281,11 +284,7 @@ background-image: linear-gradient(to right, rgba(50, 50, 50, .6), rgba(50, 50, 5
 background-size: 120%
 class: center, top, inverse
 
-
----
-background-image: linear-gradient(to right, rgba(50, 50, 50, .6), rgba(50, 50, 50, .9)), url(img/royalsociety/gentoo-penguin.jpg)
-background-size: 120%
-class: center, top, inverse
+# Descision Theory
 
 
 ---
