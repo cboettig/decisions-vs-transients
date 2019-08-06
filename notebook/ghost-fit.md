@@ -10,14 +10,14 @@ set.seed(123456)
 ```
 
 ``` r
-data <- read_csv("../data/reps.csv") # %>% filter(t %in% seq(0,4000, by=4))
+data <- read_csv("../data/reps.csv.xz") # %>% filter(t %in% seq(0,4000, by=4))
 ```
 
     ## Parsed with column specification:
     ## cols(
+    ##   reps = col_double(),
     ##   t = col_double(),
-    ##   x = col_double(),
-    ##   reps = col_double()
+    ##   x = col_double()
     ## )
 
 ``` r
@@ -40,7 +40,7 @@ coding <- function(reps) case_when(
 )
 extremes <- data %>% mutate(coding = coding(reps)) %>% na.omit()
 
-write_csv(extremes, "../data/extremes.csv")
+write_csv(extremes, "../data/extremes.csv.xz")
 extremes %>% ggplot(aes(t, x, group=reps, color = coding)) + geom_line(alpha=0.5)
 ```
 
@@ -96,7 +96,7 @@ system.time({
 ```
 
     ##    user  system elapsed 
-    ##  45.383   3.190  34.292
+    ##  46.752   4.238  36.389
 
 ``` r
 summary(draws)
@@ -112,12 +112,12 @@ summary(draws)
     ##    plus standard error of the mean:
     ## 
     ##           Mean             SD       Naive SE Time-series SE 
-    ##      2.212e-02      1.949e-04      3.082e-06      4.225e-06 
+    ##      2.223e-02      9.475e-05      1.498e-06      2.561e-06 
     ## 
     ## 2. Quantiles for each variable:
     ## 
     ##    2.5%     25%     50%     75%   97.5% 
-    ## 0.02173 0.02199 0.02212 0.02225 0.02250
+    ## 0.02205 0.02217 0.02223 0.02230 0.02242
 
 ``` r
 bayesplot::mcmc_trace(draws)
@@ -185,7 +185,7 @@ system.time({
 ```
 
     ##    user  system elapsed 
-    ##  52.535   3.465  40.087
+    ##  55.831   6.011  45.865
 
 ``` r
 bayesplot::mcmc_trace(draws2)
@@ -238,7 +238,7 @@ system.time({
 ```
 
     ##    user  system elapsed 
-    ##  56.137   3.683  43.352
+    ##  59.505   6.648  49.603
 
 ``` r
 bayesplot::mcmc_trace(draws3)

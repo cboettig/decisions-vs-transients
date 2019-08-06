@@ -23,7 +23,7 @@ theory <-
     tibble(x= seq(0,2, length.out = 100)) %>%
     mutate(growth = growth(x,p), 
            consumption = consumption(x,p)) %>%
-    mutate(potential = - cumsum(g - c)) %>%
+    mutate(potential = - cumsum(growth - consumption)) %>%
     gather(curve, y, -x, -potential) 
 }
 ```
