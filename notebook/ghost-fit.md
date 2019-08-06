@@ -15,9 +15,9 @@ data <- read_csv("../data/reps.csv") # %>% filter(t %in% seq(0,4000, by=4))
 
     ## Parsed with column specification:
     ## cols(
-    ##   reps = col_double(),
     ##   t = col_double(),
-    ##   x = col_double()
+    ##   x = col_double(),
+    ##   reps = col_double()
     ## )
 
 ``` r
@@ -38,8 +38,10 @@ coding <- function(reps) case_when(
   reps %in% lows ~ "low",
   reps %in% highs ~ "high"
 )
-df <- data %>% mutate(coding = coding(reps)) %>% na.omit()
-df %>% ggplot(aes(t, x, group=reps, color = coding)) + geom_line(alpha=0.5)
+extremes <- data %>% mutate(coding = coding(reps)) %>% na.omit()
+
+write_csv(extremes, "../data/extremes.csv")
+extremes %>% ggplot(aes(t, x, group=reps, color = coding)) + geom_line(alpha=0.5)
 ```
 
 ![](ghost-fit_files/figure-gfm/unnamed-chunk-3-1.png)<!-- -->
@@ -94,7 +96,7 @@ system.time({
 ```
 
     ##    user  system elapsed 
-    ## 672.534 146.408 170.526
+    ##  45.383   3.190  34.292
 
 ``` r
 summary(draws)
@@ -110,12 +112,12 @@ summary(draws)
     ##    plus standard error of the mean:
     ## 
     ##           Mean             SD       Naive SE Time-series SE 
-    ##      2.240e-02      9.577e-05      1.514e-06      2.332e-06 
+    ##      2.212e-02      1.949e-04      3.082e-06      4.225e-06 
     ## 
     ## 2. Quantiles for each variable:
     ## 
     ##    2.5%     25%     50%     75%   97.5% 
-    ## 0.02220 0.02233 0.02240 0.02246 0.02258
+    ## 0.02173 0.02199 0.02212 0.02225 0.02250
 
 ``` r
 bayesplot::mcmc_trace(draws)
@@ -129,15 +131,7 @@ samples <-
           function(x) data.frame(x, t = 1:dim(x)[1]), 
           .id = "chain") %>% 
   gather(variable, value, -t, -chain)
-
-samples %>%  
-  ggplot(aes(t,value, col=chain, group=chain)) + 
-  geom_line() +
-  facet_wrap(~variable, scales = "free") + 
-  scale_color_viridis_d()
 ```
-
-![](ghost-fit_files/figure-gfm/unnamed-chunk-10-1.png)<!-- -->
 
 ``` r
 #Q = 5
@@ -158,7 +152,7 @@ samples %>% ggplot() +
   facet_wrap(~variable, scales = "free")
 ```
 
-![](ghost-fit_files/figure-gfm/unnamed-chunk-12-1.png)<!-- -->
+![](ghost-fit_files/figure-gfm/unnamed-chunk-13-1.png)<!-- -->
 
 -----
 
@@ -180,7 +174,7 @@ x_t <- wide[-n,]
 
 ``` r
 mean <- x_t + r * x_t * (1 - x_t / K) - a * x_t ^ Q / (x_t ^ Q + H ^ Q)
-distribution(x_t1) <- normal(mean, sigma)
+distribution(x_t1) <- normal(mean, sigma * x_t)
 m <- model(a)
 ```
 
@@ -190,14 +184,14 @@ system.time({
 })
 ```
 
-    ##     user   system  elapsed 
-    ## 1347.047  205.638  225.499
+    ##    user  system elapsed 
+    ##  52.535   3.465  40.087
 
 ``` r
 bayesplot::mcmc_trace(draws2)
 ```
 
-![](ghost-fit_files/figure-gfm/unnamed-chunk-17-1.png)<!-- -->
+![](ghost-fit_files/figure-gfm/unnamed-chunk-18-1.png)<!-- -->
 
 ``` r
 samples2 <-  
@@ -212,7 +206,7 @@ samples2 %>% ggplot() +
   facet_wrap(~variable, scales = "free")
 ```
 
-![](ghost-fit_files/figure-gfm/unnamed-chunk-18-1.png)<!-- -->
+![](ghost-fit_files/figure-gfm/unnamed-chunk-19-1.png)<!-- -->
 
 ## Random sample
 
@@ -243,14 +237,14 @@ system.time({
 })
 ```
 
-    ##     user   system  elapsed 
-    ## 1473.513  237.167  243.495
+    ##    user  system elapsed 
+    ##  56.137   3.683  43.352
 
 ``` r
 bayesplot::mcmc_trace(draws3)
 ```
 
-![](ghost-fit_files/figure-gfm/unnamed-chunk-23-1.png)<!-- -->
+![](ghost-fit_files/figure-gfm/unnamed-chunk-24-1.png)<!-- -->
 
 ``` r
 samples3 <-  
@@ -265,4 +259,4 @@ samples3 %>% ggplot() +
   facet_wrap(~variable, scales = "free")
 ```
 
-![](ghost-fit_files/figure-gfm/unnamed-chunk-24-1.png)<!-- -->
+![](ghost-fit_files/figure-gfm/unnamed-chunk-25-1.png)<!-- -->
