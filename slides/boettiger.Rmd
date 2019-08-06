@@ -11,6 +11,8 @@ output:
       highlightStyle: github
       highlightLines: true
       countIncrementalSlides: false
+      slideNumberFormat: "%current%"
+
 ---
 
 background-image: url(img/royalsociety/penguin-swim.jpg)
@@ -119,15 +121,6 @@ class: center, top, inverse
 
 $$X_{t+1} = X_t + \underbrace{X_t r \left(1 -\frac{X_t}{K} \right)}_{\textrm{logistic growth}}  - \underbrace{\frac{a X_t ^ Q}{X_t^ Q + H ^ Q}}_{\textrm{saturating consumption}} + \underbrace{\xi_t X_t}_{\textrm{environmental noise}}$$
 
-
----
-background-image: linear-gradient(to right, rgba(50, 50, 50, .6), rgba(50, 50, 50, .9)), url(img/royalsociety/green-crested-lizard.jpg)
-background-size: 120%
-background-position: center
-class: center, top, inverse
-
-## Potential well diagram
-
 ```{r echo=FALSE}
 p <- list(r = .05, K = 2, Q = 5, H = .38, sigma = .02, a=0.023, 
           N = 4e3, x0 = 0.2, N = 1e4)
@@ -138,7 +131,7 @@ theory(p) %>%
 ```
 
 ---
-background-image: linear-gradient(to right, rgba(50, 50, 50, .6), rgba(50, 50, 50, .9)), url(img/royalsociety/green-crested-lizard.jpg)
+background-image: linear-gradient(to right, rgba(50, 50, 50, .6), rgba(50, 50, 50, .9)), url(img/royalsociety/snake.jpg)
 background-size: 120%
 background-position: center
 class: center, top, inverse
@@ -159,7 +152,7 @@ background-position: center
 class: center, top, inverse
 
 
-## Dynamics from the deterministic skeleton
+## Time-series of the dynamics from the deterministic skeleton
 
 ```{r echo=FALSE}
 det <- det_sim(may,p) %>% mutate(reps=1) %>% filter(t < 3000)
@@ -208,8 +201,8 @@ extremes %>%
 ```
 
 ---
-background-image: linear-gradient(to right, rgba(50, 50, 50, .8), rgba(50, 50, 50, .95)), url(img/royalsociety/gentoo-penguin.jpg)
-background-size: 120%
+background-image: linear-gradient(to right, rgba(50, 50, 50, .7), rgba(50, 50, 50, .95)), url(img/royalsociety/gentoo-penguin.jpg)
+background-size: 110%
 class: center, top, inverse
 background-position: center
 
@@ -226,8 +219,8 @@ data %>% ggplot(aes(t,x, group=reps)) +
 ```
 
 ---
-background-image: linear-gradient(to right, rgba(50, 50, 50, .8), rgba(50, 50, 50, .95)), url(img/royalsociety/gentoo-penguin.jpg)
-background-size: 120%
+background-image: linear-gradient(to right, rgba(50, 50, 50, .7), rgba(50, 50, 50, .95)), url(img/royalsociety/gentoo-penguin.jpg)
+background-size: 110%
 class: center, top, inverse
 background-position: center
 
@@ -236,14 +229,14 @@ background-position: center
 ```{r echo=FALSE}
 data %>% ggplot(aes(t,x, group=reps)) + 
   geom_line(alpha=0.02, color = "white") + 
-  geom_line(data = det, lwd=2, color = "white")
+  geom_line(data = mean, lwd=2, color = "white")
 ```
 
 
 
 ---
-background-image: linear-gradient(to right, rgba(50, 50, 50, .8), rgba(50, 50, 50, .95)), url(img/royalsociety/gentoo-penguin.jpg)
-background-size: 120%
+background-image: linear-gradient(to right, rgba(50, 50, 50, .7), rgba(50, 50, 50, .95)), url(img/royalsociety/gentoo-penguin-wtf.jpg)
+background-size: 110%
 class: center, top, inverse
 background-position: center
 
@@ -253,13 +246,46 @@ background-position: center
 data %>% 
   ggplot(aes(t,x, group=reps)) + 
   geom_line(alpha=0.02, color = "white") + 
-  geom_line(data = mean, lwd=2, color = rgb(.6, .6, 1))
+  geom_line(data = mean, lwd = 2, color = "white") +
+  geom_line(data = det, lwd = 2, color = rgb(.6, .6, 1)) 
 ```
 
 
+---
+background-image: linear-gradient(to right, rgba(50, 50, 50, .7), rgba(50, 50, 50, .95)), url(img/royalsociety/gentoo-penguin.jpg)
+background-size: 110%
+class: center, top, inverse
+background-position: center
+
+#  First-passage times to the stable attractor
+
+```{r echo=FALSE}
+## det equib
+# data  %>% filter(t == max(t)) %>% pull(x) %>% mean() ## ~ 1.25
+
+## First-passage time, tau
+passage <- data %>% group_by(reps) %>% filter(x > 1.25) %>% summarise(tau = min(t))
+det_tau <- det %>% group_by(reps) %>% filter(x > 1.25) %>% summarise(tau = min(t)) %>% pull(tau)
+
+passage %>% ggplot(aes(tau)) + geom_histogram(binwidth = 200, fill=rgb(.95,.95,.95)) + geom_vline(aes(xintercept=det_tau), col="blue", lwd=2) #+ theme_bw(42)
+
+```
+
 
 ---
-background-image: linear-gradient(to right, rgba(50, 50, 50, .6), rgba(50, 50, 50, .9)), url(img/royalsociety/snake.jpg)
+background-image: linear-gradient(to right, rgba(50, 50, 50, .7), rgba(50, 50, 50, .95)), url(img/royalsociety/gentoo-penguin.jpg)
+background-size: 110%
+class: left, top, inverse
+background-position: center
+
+# Features that drive long transient dynamics also create stochastic phenomena
+
+- Emergent ensemble dynamics not predicted by the deterministic model
+- ... But intuition is simple: noise helps 'jump' the ghost
+- .... But also creates dynamics that are deeply challenging for both inference & decision-making
+
+---
+background-image: linear-gradient(to right, rgba(50, 50, 50, .8), rgba(50, 50, 50, .95)), url(img/royalsociety/reef-shark.jpg)
 background-size: 120%
 class: center, top, inverse
 background-position: center
@@ -269,11 +295,13 @@ background-position: center
 
 
 ---
-background-image: linear-gradient(to right, rgba(50, 50, 50, .6), rgba(50, 50, 50, .9)), url(img/royalsociety/reef-shark.jpg)
+background-image: linear-gradient(to right, rgba(50, 50, 50, .8), rgba(50, 50, 50, .95)), url(img/royalsociety/reef-shark.jpg)
 background-size: 120%
-class: center, top, inverse
+class: left, top, inverse
 
+# Challenges to Model Inference
 
+Given time-series observations, can 
 
 
 ---
@@ -281,11 +309,7 @@ background-image: linear-gradient(to right, rgba(50, 50, 50, .6), rgba(50, 50, 5
 background-size: 120%
 class: center, top, inverse
 
-
----
-background-image: linear-gradient(to right, rgba(50, 50, 50, .6), rgba(50, 50, 50, .9)), url(img/royalsociety/gentoo-penguin.jpg)
-background-size: 120%
-class: center, top, inverse
+# Descision Theory
 
 
 ---
