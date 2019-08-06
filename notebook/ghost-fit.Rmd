@@ -72,10 +72,9 @@ a <- uniform(0, 1)
 #sigma <- uniform(0, 1)
 
 
-
 # Model
 mean <- x_t + r * x_t * (1 - x_t / K) - a * x_t ^ Q / (x_t ^ Q + H ^ Q)
-distribution(x_t1) <- normal(mean, sigma)
+distribution(x_t1) <- normal(mean, sigma * x_t)
 m <- model(a)
 ```
 
@@ -160,6 +159,7 @@ x_t <- wide[-n,]
 
 
 ```{r}
+a <- uniform(0, 1)
 mean <- x_t + r * x_t * (1 - x_t / K) - a * x_t ^ Q / (x_t ^ Q + H ^ Q)
 distribution(x_t1) <- normal(mean, sigma * x_t)
 m <- model(a)
@@ -189,15 +189,12 @@ samples2 %>% ggplot() +
 ```
 
 
-## Random sample
+## Full ensemble
 
 
 
 ```{r}
-
-random <- sample(unique(data$reps), 1)
 wide <- data %>% 
-  filter(reps %in% random) %>%
   spread(reps, x) %>%
   select(-t) %>% 
   as.matrix()
@@ -213,14 +210,15 @@ x_t <- wide[-n,]
 
 
 ```{r}
+a <- uniform(0, 1)
 mean <- x_t + r * x_t * (1 - x_t / K) - a * x_t ^ Q / (x_t ^ Q + H ^ Q)
-distribution(x_t1) <- normal(mean, sigma)
+distribution(x_t1) <- normal(mean, sigma * x_t)
 m <- model(a)
 ```
 
 ```{r }
 system.time({
-  draws3 <- mcmc(m, n_samples = 1000, warmup = 3000, chains = 4, verbose = FALSE)
+  draws3 <- mcmc(m, n_samples = 1000, warmup = 3000, chains = 6, verbose = FALSE)
 })
 ```
 
@@ -240,6 +238,30 @@ samples3 %>% ggplot() +
   geom_vline(data = true, aes(xintercept = value), col = "red", lwd = 1) + 
   facet_wrap(~variable, scales = "free")
 ```
+
+
+
+
+```{r }
+p <- list(r = .05, K = 2, Q = 5, H = .38, sigma = .02, a=0.023, N = 4e3, x0 = 0.2, N = 1e4)
+source("../R/ghost.R")
+p$a <- 0.021
+tf <- theory(p) %>% mutate(a = 0.021)
+
+p$a <- 0.023
+tf <- theory(p) %>% mutate(a = 0.023) %>% bind_rows(tf)
+
+p$a <- 0.024
+tf <- theory(p) %>% mutate(a = 0.024) %>% bind_rows(tf)
+
+tf <- tf %>% mutate(a = as.factor(a))
+ 
+tf %>%
+  ggplot(aes(x, potential, col=a)) +
+  geom_line(lwd=1)
+
+```
+
 
 
 ```{r}

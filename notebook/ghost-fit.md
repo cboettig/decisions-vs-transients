@@ -82,10 +82,9 @@ a <- uniform(0, 1)
 #sigma <- uniform(0, 1)
 
 
-
 # Model
 mean <- x_t + r * x_t * (1 - x_t / K) - a * x_t ^ Q / (x_t ^ Q + H ^ Q)
-distribution(x_t1) <- normal(mean, sigma)
+distribution(x_t1) <- normal(mean, sigma * x_t)
 m <- model(a)
 ```
 
@@ -96,7 +95,7 @@ system.time({
 ```
 
     ##    user  system elapsed 
-    ##  46.752   4.238  36.389
+    ##  46.822   4.490  36.598
 
 ``` r
 summary(draws)
@@ -112,12 +111,12 @@ summary(draws)
     ##    plus standard error of the mean:
     ## 
     ##           Mean             SD       Naive SE Time-series SE 
-    ##      2.223e-02      9.475e-05      1.498e-06      2.561e-06 
+    ##      2.219e-02      1.058e-04      1.672e-06      2.411e-06 
     ## 
     ## 2. Quantiles for each variable:
     ## 
     ##    2.5%     25%     50%     75%   97.5% 
-    ## 0.02205 0.02217 0.02223 0.02230 0.02242
+    ## 0.02198 0.02212 0.02219 0.02226 0.02240
 
 ``` r
 bayesplot::mcmc_trace(draws)
@@ -173,6 +172,7 @@ x_t <- wide[-n,]
 ```
 
 ``` r
+a <- uniform(0, 1)
 mean <- x_t + r * x_t * (1 - x_t / K) - a * x_t ^ Q / (x_t ^ Q + H ^ Q)
 distribution(x_t1) <- normal(mean, sigma * x_t)
 m <- model(a)
@@ -185,7 +185,7 @@ system.time({
 ```
 
     ##    user  system elapsed 
-    ##  55.831   6.011  45.865
+    ##  49.161   4.668  38.348
 
 ``` r
 bayesplot::mcmc_trace(draws2)
@@ -208,12 +208,10 @@ samples2 %>% ggplot() +
 
 ![](ghost-fit_files/figure-gfm/unnamed-chunk-19-1.png)<!-- -->
 
-## Random sample
+## Full ensemble
 
 ``` r
-random <- sample(unique(data$reps), 1)
 wide <- data %>% 
-  filter(reps %in% random) %>%
   spread(reps, x) %>%
   select(-t) %>% 
   as.matrix()
@@ -226,19 +224,20 @@ x_t <- wide[-n,]
 ```
 
 ``` r
+a <- uniform(0, 1)
 mean <- x_t + r * x_t * (1 - x_t / K) - a * x_t ^ Q / (x_t ^ Q + H ^ Q)
-distribution(x_t1) <- normal(mean, sigma)
+distribution(x_t1) <- normal(mean, sigma * x_t)
 m <- model(a)
 ```
 
 ``` r
 system.time({
-  draws3 <- mcmc(m, n_samples = 1000, warmup = 3000, chains = 4, verbose = FALSE)
+  draws3 <- mcmc(m, n_samples = 1000, warmup = 3000, chains = 6, verbose = FALSE)
 })
 ```
 
     ##    user  system elapsed 
-    ##  59.505   6.648  49.603
+    ## 434.969 288.289 713.648
 
 ``` r
 bayesplot::mcmc_trace(draws3)
@@ -260,3 +259,24 @@ samples3 %>% ggplot() +
 ```
 
 ![](ghost-fit_files/figure-gfm/unnamed-chunk-25-1.png)<!-- -->
+
+``` r
+p <- list(r = .05, K = 2, Q = 5, H = .38, sigma = .02, a=0.023, N = 4e3, x0 = 0.2, N = 1e4)
+source("../R/ghost.R")
+p$a <- 0.021
+tf <- theory(p) %>% mutate(a = 0.021)
+
+p$a <- 0.023
+tf <- theory(p) %>% mutate(a = 0.023) %>% bind_rows(tf)
+
+p$a <- 0.024
+tf <- theory(p) %>% mutate(a = 0.024) %>% bind_rows(tf)
+
+tf <- tf %>% mutate(a = as.factor(a))
+ 
+tf %>%
+  ggplot(aes(x, potential, col=a)) +
+  geom_line(lwd=1)
+```
+
+![](ghost-fit_files/figure-gfm/unnamed-chunk-26-1.png)<!-- -->
