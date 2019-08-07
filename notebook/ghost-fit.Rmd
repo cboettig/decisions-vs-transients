@@ -23,14 +23,14 @@ Divide this data into several groups based on
 means <- data %>% group_by(reps) %>% summarise(ave = mean(x)) %>% arrange(ave)
 
 lows <- means %>% dplyr::slice(1:10) %>% pull(reps)
-highs <- means %>% dplyr::slice((n()-10):n()) %>% pull(reps)
+highs <- means %>% dplyr::slice((n()-9):n()) %>% pull(reps)
 coding <- function(reps) case_when(
   reps %in% lows ~ "low",
   reps %in% highs ~ "high"
 )
 extremes <- data %>% mutate(coding = coding(reps)) %>% na.omit()
 
-write_csv(extremes, "../data/extremes.csv.xz")
+write_csv(data.frame(lows=lows,highs=highs), "../data/extremes.csv.xz")
 extremes %>% ggplot(aes(t, x, group=reps, color = coding)) + geom_line(alpha=0.5)
 
 #means %>% ggplot(aes(ave)) + geom_histogram(binwidth = 0.02)
