@@ -71,14 +71,6 @@ class: center, top, inverse
 
 # ... a need for theory & process-based models
 
----
-background-image: linear-gradient(to right, rgba(50, 50, 50, .6), rgba(50, 50, 50, .9)), url(img/royalsociety/whale-shark.jpg)
-background-position: center
-background-size: 120%
-class: center, top, inverse
-
-# Ghost Attractors
-
 
 ---
 background-image: linear-gradient(to right, rgba(50, 50, 50, .6), rgba(50, 50, 50, .9)), url(img/royalsociety/whale-shark.jpg)
@@ -87,6 +79,8 @@ background-size: 120%
 class: center, top, inverse
 
 # Ghost Attractors
+
+--
 
 ![](img/ghost-invert.png)
 
@@ -95,33 +89,21 @@ Hastings et al. *Science* (2018)
 
 
 ---
+layout: true
 background-image: linear-gradient(to right, rgba(50, 50, 50, .6), rgba(50, 50, 50, .9)), url(img/royalsociety/snake.jpg)
 background-size: 120%
 background-position: center
 class: left, top, inverse
 
-# Examples 
-
-Outbreak: disease, pest, invasive species
-
-
-- Low endemic level
-- outbreak
-- saturation
 
 ---
-background-image: linear-gradient(to right, rgba(50, 50, 50, .6), rgba(50, 50, 50, .9)), url(img/royalsociety/snake.jpg)
-background-size: 120%
-background-position: center
-class: center, top, inverse
-
 
 # A look at the model
 
 
 $$X_{t+1} = X_t + \underbrace{X_t r \left(1 -\frac{X_t}{K} \right)}_{\textrm{logistic growth}}  - \underbrace{\frac{a X_t ^ Q}{X_t^ Q + H ^ Q}}_{\textrm{saturating consumption}} + \underbrace{\xi_t X_t}_{\textrm{environmental noise}}$$
 
-```{r echo=FALSE}
+```{r fig.height=5.5}
 p <- list(r = .05, K = 2, Q = 5, H = .38, sigma = .02, a=0.023, 
           N = 4e3, x0 = 0.2, N = 1e4)
 theory(p) %>%
@@ -131,12 +113,8 @@ theory(p) %>%
 ```
 
 ---
-background-image: linear-gradient(to right, rgba(50, 50, 50, .6), rgba(50, 50, 50, .9)), url(img/royalsociety/snake.jpg)
-background-size: 120%
-background-position: center
-class: center, top, inverse
 
-## Potential well diagram
+## potential well diagram
 
 ```{r echo=FALSE}
 theory(p) %>%
@@ -146,13 +124,8 @@ theory(p) %>%
 ```
 
 ---
-background-image: linear-gradient(to right, rgba(50, 50, 50, .6), rgba(50, 50, 50, .9)), url(img/royalsociety/green-crested-lizard.jpg)
-background-size: 120%
-background-position: center
-class: center, top, inverse
 
-
-## Time-series of the dynamics from the deterministic skeleton
+## deterministic skeleton timeseries 
 
 ```{r echo=FALSE}
 det <- det_sim(may,p) %>% mutate(reps=1) %>% filter(t < 3000)
@@ -160,58 +133,52 @@ det  %>%
   ggplot(aes(t, x)) + 
   geom_line(lwd = 2, col="white")
 ```
-
 ---
-background-image: linear-gradient(to right, rgba(50, 50, 50, .6), rgba(50, 50, 50, .9)), url(img/royalsociety/green-crested-lizard.jpg)
-background-size: 120%
-class: center, top, inverse
-background-position: center
-
-
-
-# Under the stochastic model
-
-```{r}
-extremes <- read_csv("../data/extremes.csv")
-#extremes %>%  filter(coding == "high", t < 3000) %>% pull(reps) %>% unique()
-
-extremes %>% 
-  filter(coding == "high", reps == 14, t < 3000) %>%  # %>% pull(reps) %>% unique()
-  ggplot(aes(t, x)) + 
-  geom_line(lwd = 2, col="white")
-
-```
-
-
----
-background-image: linear-gradient(to right, rgba(50, 50, 50, .6), rgba(50, 50, 50, .9)), url(img/royalsociety/green-crested-lizard.jpg)
-background-size: 120%
-class: center, top, inverse
-background-position: center
-
-# Under the stochastic model
-
-```{r echo=FALSE}
-#extremes %>%  filter(coding == "low", t < 3000) %>% pull(reps) %>% unique()
-extremes %>% 
-  filter(coding == "low", reps == 47, t < 3000) %>%
-  ggplot(aes(t, x)) + 
-  geom_line(lwd = 2, col="white")
-
-```
-
----
+layout: true
 background-image: linear-gradient(to right, rgba(50, 50, 50, .7), rgba(50, 50, 50, .95)), url(img/royalsociety/gentoo-penguin.jpg)
-background-size: 110%
+background-size: 150%
 class: center, top, inverse
-background-position: center
+background-position: left
 
-# Under the stochastic model
+# Stochastic simulations
+
+---
+
 
 ```{r}
-data <- vroom::vroom("../data/reps.csv") %>% filter(t < 3000)
-mean <- data %>% group_by(t) %>% summarise(x = mean(x)) %>% mutate(reps = 1)
+data <- vroom::vroom("../data/reps.csv.xz") %>% filter(t < 3000)
+## get tail cases for comparison
+ex <- data %>% group_by(reps) %>% summarise(ave = mean(x)) %>% arrange(ave)
+lows <- ex %>% dplyr::slice(1:10) %>% pull(reps)
+highs <- ex %>% dplyr::slice((n()-9):n()) %>% pull(reps)
 ```
+
+```{r}
+data %>% filter(reps == lows[[6]]) %>%
+  ggplot(aes(t, x, group=reps)) + 
+  geom_line(lwd=2, col="white") + 
+  ylim(0,1.6)
+```
+
+
+---
+
+
+```{r}
+
+data %>% filter(reps == highs[[6]]) %>%
+  ggplot(aes(t, x, group=reps)) + 
+  geom_line(lwd=2, col="white") + 
+  ylim(0,1.6)
+
+
+```
+
+
+
+---
+
+
 
 ```{r}
 data %>% ggplot(aes(t,x, group=reps)) + 
@@ -219,14 +186,10 @@ data %>% ggplot(aes(t,x, group=reps)) +
 ```
 
 ---
-background-image: linear-gradient(to right, rgba(50, 50, 50, .7), rgba(50, 50, 50, .95)), url(img/royalsociety/gentoo-penguin.jpg)
-background-size: 110%
-class: center, top, inverse
-background-position: center
 
-# Under the stochastic model
 
 ```{r echo=FALSE}
+mean <- data %>% group_by(t) %>% summarise(x = mean(x)) %>% mutate(reps = 1)
 data %>% ggplot(aes(t,x, group=reps)) + 
   geom_line(alpha=0.02, color = "white") + 
   geom_line(data = mean, lwd=2, color = "white")
@@ -236,11 +199,7 @@ data %>% ggplot(aes(t,x, group=reps)) +
 
 ---
 background-image: linear-gradient(to right, rgba(50, 50, 50, .7), rgba(50, 50, 50, .95)), url(img/royalsociety/gentoo-penguin-wtf.jpg)
-background-size: 110%
-class: center, top, inverse
-background-position: center
 
-# Under the stochastic model
 
 ```{r echo=FALSE}
 data %>% 
@@ -252,12 +211,8 @@ data %>%
 
 
 ---
-background-image: linear-gradient(to right, rgba(50, 50, 50, .7), rgba(50, 50, 50, .95)), url(img/royalsociety/gentoo-penguin.jpg)
-background-size: 110%
-class: center, top, inverse
-background-position: center
 
-#  First-passage times to the stable attractor
+**First-passage times**
 
 ```{r echo=FALSE}
 ## det equib
@@ -266,56 +221,143 @@ background-position: center
 ## First-passage time, tau
 passage <- data %>% group_by(reps) %>% filter(x > 1.25) %>% summarise(tau = min(t))
 det_tau <- det %>% group_by(reps) %>% filter(x > 1.25) %>% summarise(tau = min(t)) %>% pull(tau)
+```
 
-passage %>% ggplot(aes(tau)) + geom_histogram(binwidth = 200, fill=rgb(.95,.95,.95)) + geom_vline(aes(xintercept=det_tau), col="blue", lwd=2) #+ theme_bw(42)
-
+```{r}
+passage %>% ggplot(aes(tau)) + 
+  geom_histogram(binwidth = 200, fill=rgb(.9, .9, .9, .7)) + 
+  geom_vline(aes(xintercept=det_tau), col="blue", lwd=2)
 ```
 
 
 ---
-background-image: linear-gradient(to right, rgba(50, 50, 50, .7), rgba(50, 50, 50, .95)), url(img/royalsociety/gentoo-penguin.jpg)
+layout: false
+background-image: linear-gradient(to right, rgba(50, 50, 50, .7), rgba(50, 50, 50, .95)), url(img/royalsociety/green-crested-lizard.jpg)
 background-size: 110%
 class: left, top, inverse
 background-position: center
 
-# Features that drive long transient dynamics also create stochastic phenomena
+## Long transient dynamics can
+## also create stochastic phenomena
+
+--
 
 - Emergent ensemble dynamics not predicted by the deterministic model
-- ... But intuition is simple: noise helps 'jump' the ghost
-- .... But also creates dynamics that are deeply challenging for both inference & decision-making
+
+--
+
+- But intuition is simple: noise helps 'jump' the ghost
+
+--
+
+- Noise creates dynamics that are deeply challenging for both inference & decision-making... 
 
 ---
-background-image: linear-gradient(to right, rgba(50, 50, 50, .8), rgba(50, 50, 50, .95)), url(img/royalsociety/reef-shark.jpg)
+background-image: linear-gradient(to right, rgba(150, 150, 150, .6), rgba(150, 150, 150, .85)), url(img/royalsociety/reef-shark.jpg)
 background-size: 120%
-class: center, top, inverse
+class: top, inverse
 background-position: center
+layout: true
 
 
 # Challenges to Model Inference
 
 
 ---
-background-image: linear-gradient(to right, rgba(50, 50, 50, .8), rgba(50, 50, 50, .95)), url(img/royalsociety/reef-shark.jpg)
-background-size: 120%
-class: left, top, inverse
 
-# Challenges to Model Inference
+---
 
-Given time-series observations, can 
+- Given time-series observations, can we distinguish ghost attractors from real attractors?
+
+```{r}
+discrete_sims <- read_csv("../data/discrete-sims.csv.xz")
+discrete_sims %>% filter(series %in% c("1", "2")) %>% ggplot(aes(time,state)) + geom_line(col="white", lwd=1.5) + facet_wrap(~ series)
+```
+
+---
+class: left
+
+Hierarchical Bayesian estimation of stability using TensorFlow(R)
+
+```r
+library("greta")
+
+mean <- x_t + r * x_t * (1 - x_t / K) - 
+        a * x_t ^ q / (x_t ^ q + b ^ q)
+distribution(x_t1) <- normal(mean, sigma_g * x_t)
+
+a <- uniform(.25, .34) # Prior
+
+draws <- mcmc(model(a), n_samples = 1000, warmup = 3000, chains = 4)
+```
+
 
 
 ---
-background-image: linear-gradient(to right, rgba(50, 50, 50, .6), rgba(50, 50, 50, .9)), url(img/royalsociety/pensive-polarbear.jpg)
+class: left
+
+```{r fig.width=12.5, fig.height=7}
+label <- c("no switch", "switch", "no ghost")
+
+df <- c("../data/no_switches.csv.xz", "../data/switches.csv.xz", "../data/weak_ghost.csv.xz") %>%
+  map_dfr(read_csv, .id = "timeseries") %>% 
+  mutate(timeseries = label[as.integer(timeseries)])
+
+inset <- discrete_sims %>% mutate(series = label[series]) %>% 
+  ggplot(aes(time,state, col=series)) + 
+  geom_line(lwd=1.5, show.legend = FALSE) + 
+  ggplot2::scale_color_viridis_d() 
+
+
+
+p1 <- df %>% 
+  ggplot((aes(value, fill=timeseries))) + 
+  geom_histogram(alpha=0.9) + 
+  geom_vline(aes(xintercept=0.27, col = "no switch"), col= viridis::viridis_pal()(3)[1], lwd=2) + 
+  geom_vline(aes(xintercept=0.28, col = "no ghost"), col = viridis::viridis_pal()(3)[2], lwd=2) + 
+  ggplot2::scale_fill_viridis_d()
+
+vp <- grid::viewport(width = 4, height = 0.8, x = 0.3, y = 0.7)
+
+disp <- function(){
+print(p1)
+print(inset, vp = vp)
+}
+
+disp()
+```
+
+
+---
+layout: true
+background-image: linear-gradient(to right, rgba(50, 50, 50, .6), rgba(50, 50, 50, .9)), url(img/royalsociety/forest-fire.jpg)
 background-size: 120%
 class: center, top, inverse
 
 # Descision Theory
+
+---
+
+### Management under uncertainty
+
+---
+
+
+
+
+---
+layout: true
+background-image: linear-gradient(to right, rgba(50, 50, 50, .6), rgba(50, 50, 50, .9)), url(img/royalsociety/pensive-polarbear.jpg)
+background-size: 120%
+class: center, top, inverse
 
 
 ---
 background-image: linear-gradient(to right, rgba(50, 50, 50, .6), rgba(50, 50, 50, .9)), url(img/royalsociety/eagle-ray.jpg)
 background-size: 120%
 class: center, top, inverse
+
+
 
 
 

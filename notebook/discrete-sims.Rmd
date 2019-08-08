@@ -152,10 +152,8 @@ no_switches %>%
   ggplot(aes(time, state)) + geom_point() + geom_path() 
 ```
 
-
-
 ```{r}
-set.seed(11)
+set.seed(9)
 switches <- sim(m_belief, x0, Tmax) %>% mutate(state = states[state])
 
 switches  %>% 
@@ -163,6 +161,27 @@ switches  %>%
 ```
 
 
+
+
+
+```{r}
+set.seed(12345)
+weak_ghost <- sim(m_true, x0, Tmax)  %>% 
+  mutate(state = states[state])
+
+weak_ghost %>% 
+  ggplot(aes(time, state)) + geom_point() + geom_path() 
+```
+
+
+
+
+
+```{r}
+
+bind_rows(switches, no_switches, weak_ghost, .id="series") %>%
+write_csv("../data/discrete-sims.csv.xz")
+```
 
 
 -----
@@ -266,16 +285,6 @@ samples %>% ggplot() +
 
 write_csv(samples, "../data/no_switches.csv.xz")
 
-```
-
-
-```{r}
-set.seed(12345)
-weak_ghost <- sim(m_true, x0, Tmax)  %>% 
-  mutate(state = states[state])
-
-weak_ghost %>% 
-  ggplot(aes(time, state)) + geom_point() + geom_path() 
 ```
 
 

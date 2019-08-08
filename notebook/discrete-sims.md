@@ -147,7 +147,7 @@ no_switches %>%
 ![](discrete-sims_files/figure-gfm/unnamed-chunk-12-1.png)<!-- -->
 
 ``` r
-set.seed(11)
+set.seed(9)
 switches <- sim(m_belief, x0, Tmax) %>% mutate(state = states[state])
 
 switches  %>% 
@@ -155,6 +155,22 @@ switches  %>%
 ```
 
 ![](discrete-sims_files/figure-gfm/unnamed-chunk-13-1.png)<!-- -->
+
+``` r
+set.seed(12345)
+weak_ghost <- sim(m_true, x0, Tmax)  %>% 
+  mutate(state = states[state])
+
+weak_ghost %>% 
+  ggplot(aes(time, state)) + geom_point() + geom_path() 
+```
+
+![](discrete-sims_files/figure-gfm/unnamed-chunk-14-1.png)<!-- -->
+
+``` r
+bind_rows(switches, no_switches, weak_ghost, .id="series") %>%
+write_csv("../data/discrete-sims.csv.xz")
+```
 
 -----
 
@@ -217,13 +233,13 @@ system.time({
 ```
 
     ##    user  system elapsed 
-    ##  47.344   2.501  34.512
+    ## 215.738  17.921 538.507
 
 ``` r
 bayesplot::mcmc_trace(draws)
 ```
 
-![](discrete-sims_files/figure-gfm/unnamed-chunk-18-1.png)<!-- -->
+![](discrete-sims_files/figure-gfm/unnamed-chunk-20-1.png)<!-- -->
 
 ``` r
 samples <-  
@@ -239,7 +255,11 @@ samples %>% ggplot() +
   facet_wrap(~variable, scales = "free")
 ```
 
-![](discrete-sims_files/figure-gfm/unnamed-chunk-19-1.png)<!-- -->
+![](discrete-sims_files/figure-gfm/unnamed-chunk-21-1.png)<!-- -->
+
+``` r
+write_csv(samples, "../data/switches.csv.xz")
+```
 
 -----
 
@@ -264,13 +284,13 @@ system.time({
 ```
 
     ##    user  system elapsed 
-    ##  46.375   2.109  33.235
+    ## 212.512  17.312 457.935
 
 ``` r
 bayesplot::mcmc_trace(draws)
 ```
 
-![](discrete-sims_files/figure-gfm/unnamed-chunk-23-1.png)<!-- -->
+![](discrete-sims_files/figure-gfm/unnamed-chunk-25-1.png)<!-- -->
 
 ``` r
 samples <-  
@@ -285,18 +305,11 @@ samples %>% ggplot() +
   facet_wrap(~variable, scales = "free")
 ```
 
-![](discrete-sims_files/figure-gfm/unnamed-chunk-24-1.png)<!-- -->
+![](discrete-sims_files/figure-gfm/unnamed-chunk-26-1.png)<!-- -->
 
 ``` r
-set.seed(12345)
-weak_ghost <- sim(m_true, x0, Tmax)  %>% 
-  mutate(state = states[state])
-
-weak_ghost %>% 
-  ggplot(aes(time, state)) + geom_point() + geom_path() 
+write_csv(samples, "../data/no_switches.csv.xz")
 ```
-
-![](discrete-sims_files/figure-gfm/unnamed-chunk-25-1.png)<!-- -->
 
 Vectorize data
 
@@ -325,13 +338,13 @@ system.time({
 ```
 
     ##    user  system elapsed 
-    ##  45.428   2.098  32.580
+    ## 202.180  13.304 294.760
 
 ``` r
 bayesplot::mcmc_trace(draws)
 ```
 
-![](discrete-sims_files/figure-gfm/unnamed-chunk-30-1.png)<!-- -->
+![](discrete-sims_files/figure-gfm/unnamed-chunk-31-1.png)<!-- -->
 
 ``` r
 samples <-  
@@ -347,4 +360,35 @@ samples %>% ggplot() +
   facet_wrap(~variable, scales = "free")
 ```
 
-![](discrete-sims_files/figure-gfm/unnamed-chunk-31-1.png)<!-- -->
+![](discrete-sims_files/figure-gfm/unnamed-chunk-32-1.png)<!-- -->
+
+``` r
+write_csv(samples, "../data/weak_ghost.csv.xz")
+```
+
+``` r
+df <- c("../data/no_switches.csv.xz", "../data/switches.csv.xz", "../data/weak_ghost.csv.xz") %>%
+  map_dfr(read_csv, .id = "timeseries")
+```
+
+    ## Parsed with column specification:
+    ## cols(
+    ##   chain = col_double(),
+    ##   t = col_double(),
+    ##   variable = col_character(),
+    ##   value = col_double()
+    ## )
+    ## Parsed with column specification:
+    ## cols(
+    ##   chain = col_double(),
+    ##   t = col_double(),
+    ##   variable = col_character(),
+    ##   value = col_double()
+    ## )
+    ## Parsed with column specification:
+    ## cols(
+    ##   chain = col_double(),
+    ##   t = col_double(),
+    ##   variable = col_character(),
+    ##   value = col_double()
+    ## )
