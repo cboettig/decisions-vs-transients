@@ -57,7 +57,7 @@ Range of possible a that covers tipping in both directions:
 ```{r}
 possible_a <- seq(.25, .34, by = 0.005)
 true_a <- 0.27   ## reality has just a transient.  use  0.277 for stronger ghost
-believe_a <- 0.29 ## believe there's an attractor
+believe_a <- 0.31 ## believe there's a strong attractor
 true_i <- which.min(abs(possible_a - true_a))
 ```
 
