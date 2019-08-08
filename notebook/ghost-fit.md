@@ -33,15 +33,17 @@ on
 means <- data %>% group_by(reps) %>% summarise(ave = mean(x)) %>% arrange(ave)
 
 lows <- means %>% dplyr::slice(1:10) %>% pull(reps)
-highs <- means %>% dplyr::slice((n()-10):n()) %>% pull(reps)
+highs <- means %>% dplyr::slice((n()-9):n()) %>% pull(reps)
+write_csv(data.frame(lows=lows,highs=highs), "../data/extremes.csv.xz")
+
 coding <- function(reps) case_when(
   reps %in% lows ~ "low",
   reps %in% highs ~ "high"
 )
-extremes <- data %>% mutate(coding = coding(reps)) %>% na.omit()
-
-write_csv(extremes, "../data/extremes.csv.xz")
-extremes %>% ggplot(aes(t, x, group=reps, color = coding)) + geom_line(alpha=0.5)
+data %>% 
+  mutate(coding = coding(reps)) %>% 
+  na.omit() %>% 
+ggplot(aes(t, x, group=reps, color = coding)) + geom_line(alpha=0.5)
 ```
 
 ![](ghost-fit_files/figure-gfm/unnamed-chunk-3-1.png)<!-- -->
@@ -95,7 +97,7 @@ system.time({
 ```
 
     ##    user  system elapsed 
-    ##  46.822   4.490  36.598
+    ##  48.851   4.518  38.576
 
 ``` r
 summary(draws)
@@ -111,12 +113,12 @@ summary(draws)
     ##    plus standard error of the mean:
     ## 
     ##           Mean             SD       Naive SE Time-series SE 
-    ##      2.219e-02      1.058e-04      1.672e-06      2.411e-06 
+    ##      2.219e-02      1.129e-04      1.784e-06      2.666e-06 
     ## 
     ## 2. Quantiles for each variable:
     ## 
     ##    2.5%     25%     50%     75%   97.5% 
-    ## 0.02198 0.02212 0.02219 0.02226 0.02240
+    ## 0.02196 0.02212 0.02219 0.02227 0.02241
 
 ``` r
 bayesplot::mcmc_trace(draws)
@@ -153,6 +155,10 @@ samples %>% ggplot() +
 
 ![](ghost-fit_files/figure-gfm/unnamed-chunk-13-1.png)<!-- -->
 
+``` r
+write_csv(samples, "../data/posterior_highs.csv.xz")
+```
+
 -----
 
 ## lows
@@ -185,7 +191,7 @@ system.time({
 ```
 
     ##    user  system elapsed 
-    ##  49.161   4.668  38.348
+    ##  51.048   4.367  39.595
 
 ``` r
 bayesplot::mcmc_trace(draws2)
@@ -207,6 +213,10 @@ samples2 %>% ggplot() +
 ```
 
 ![](ghost-fit_files/figure-gfm/unnamed-chunk-19-1.png)<!-- -->
+
+``` r
+write_csv(samples2, "../data/posterior_lows.csv.xz")
+```
 
 ## Full ensemble
 
@@ -237,7 +247,7 @@ system.time({
 ```
 
     ##    user  system elapsed 
-    ## 434.969 288.289 713.648
+    ## 432.729 283.090 701.821
 
 ``` r
 bayesplot::mcmc_trace(draws3)
@@ -259,6 +269,10 @@ samples3 %>% ggplot() +
 ```
 
 ![](ghost-fit_files/figure-gfm/unnamed-chunk-25-1.png)<!-- -->
+
+``` r
+write_csv(samples3, "../data/posterior_ensemble.csv.xz")
+```
 
 ``` r
 p <- list(r = .05, K = 2, Q = 5, H = .38, sigma = .02, a=0.023, N = 4e3, x0 = 0.2, N = 1e4)

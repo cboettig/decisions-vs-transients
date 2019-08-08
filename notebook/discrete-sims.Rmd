@@ -216,6 +216,8 @@ samples %>% ggplot() +
   geom_histogram(aes(value), binwidth = wd)  +
   geom_vline(data = true, aes(xintercept = value), col = "red", lwd = 1) + 
   facet_wrap(~variable, scales = "free")
+
+write_csv(samples, "../data/switches.csv.xz")
 ```
 
 
@@ -261,6 +263,9 @@ samples %>% ggplot() +
   geom_histogram(aes(value), binwidth = wd)  +
   geom_vline(data = true, aes(xintercept = value), col = "red", lwd = 1) + 
   facet_wrap(~variable, scales = "free")
+
+write_csv(samples, "../data/no_switches.csv.xz")
+
 ```
 
 
@@ -319,9 +324,14 @@ samples %>% ggplot() +
   geom_histogram(aes(value), binwidth = wd)  +
   geom_vline(data = true, aes(xintercept = value), col = "red", lwd = 1) + 
   facet_wrap(~variable, scales = "free")
+
+write_csv(samples, "../data/weak_ghost.csv.xz")
+
 ```
 
 
 ```{r}
+df <- c("../data/no_switches.csv.xz", "../data/switches.csv.xz", "../data/weak_ghost.csv.xz") %>%
+  map_dfr(read_csv, .id = "timeseries")
 ```
 
