@@ -138,14 +138,54 @@ y <- bind_rows(data.frame(pred = x, se = 0), y)
 arima_forecast <- data %>% filter(reps == lows[[6]]) %>% select(t,x) %>% bind_cols(y)
 ```
 
+
+```{r arima_data}
+arima_forecast %>% filter(t < 2000) %>%
+  ggplot(aes(t)) + 
+  geom_line(aes(y=x), col="white") +
+  geom_line(aes(y=pred), col="grey", lwd = 1) + 
+  geom_ribbon(aes(y=pred, ymin=pred-se, ymax=pred+se), fill="white", alpha = 0.5) + 
+  xlim(0,3000) + ylim(0, 1.6)+ ylab("x")
+
+
+```
+
+
+---
+
+# Simple ARIMA forecast:
+
+```{r arima_forecast1}
+arima_forecast %>% ggplot(aes(t)) + 
+  geom_line(aes(y=pred), col="grey", lwd = 1) + 
+  geom_ribbon(aes(y=pred, ymin=pred-se, ymax=pred+se), fill="white", alpha = 0.5) + 
+  xlim(0,3000) + ylim(0, 1.6) + ylab("x")
+```
+
+
+
+---
+
+# Simple ARIMA forecast:
+
 ```{r arima_forecast}
 arima_forecast %>% ggplot(aes(t)) + 
   geom_line(aes(y=x), col="white") +
   geom_line(aes(y=pred), col="grey", lwd = 1) + 
-  geom_ribbon(aes(y=pred, ymin=pred-se, ymax=pred+se), fill="white", alpha = 0.5) 
+  geom_ribbon(aes(y=pred, ymin=pred-se, ymax=pred+se), fill="white", alpha = 0.5)  + 
+  xlim(0,3000) + ylim(0, 1.6)+ ylab("x")
 
 
 ```
+
+
+---
+
+# Statistical Issues
+
+---
+
+# Theoretical Issues
 
 
 ---
@@ -158,12 +198,12 @@ class: left, top, inverse
 
 ---
 
-# A look at a candidate model
+### A look at a candidate model
 
 
 $$X_{t+1} = X_t + \underbrace{X_t r \left(1 -\frac{X_t}{K} \right)}_{\textrm{logistic growth}}  - \underbrace{\frac{a X_t ^ Q}{X_t^ Q + H ^ Q}}_{\textrm{saturating consumption}} + \underbrace{\xi_t X_t}_{\textrm{environmental noise}}$$
 
-```{r theory_f, fig.height=5.5}
+```{r theory_f, fig.height=5.2}
 p <- list(r = .05, K = 2, Q = 5, H = .38, sigma = .02, a=0.023, 
           N = 4e3, x0 = 0.2, N = 1e4)
 theory(p) %>%
@@ -350,7 +390,7 @@ draws <- mcmc(model(a), n_samples = 1000, warmup = 3000, chains = 4)
 ---
 class: left
 
-```{r posteriors, fig.width=12.5, fig.height=7}
+```{r posteriors, fig.width=13, fig.height=6}
 label <- c("no switch", "switch", "no ghost")
 
 df <- c("../data/no_switches.csv.xz", "../data/switches.csv.xz", "../data/weak_ghost.csv.xz") %>%
@@ -371,7 +411,7 @@ p1 <- df %>%
   geom_vline(aes(xintercept=0.28, col = "no ghost"), col = viridis::viridis_pal()(3)[2], lwd=2) + 
   ggplot2::scale_fill_viridis_d()
 
-vp <- grid::viewport(width = 4, height = 0.8, x = 0.3, y = 0.7)
+vp <- grid::viewport(width = .5, height = 0.55, x = 0.35, y = 0.7)
 
 disp <- function(){
 print(p1)
