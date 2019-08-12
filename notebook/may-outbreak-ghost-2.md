@@ -233,3 +233,7 @@ sim <- mdp_learning(transition, reward, discount,
 ```
 
 ![](may-outbreak-ghost-2_files/figure-gfm/unnamed-chunk-22-1.png)<!-- -->
+
+``` r
+saveRDS(sim, "sim-ghost-learning-2.Rds")
+```

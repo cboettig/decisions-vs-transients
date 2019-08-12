@@ -199,7 +199,7 @@ reward <- models[[1]][["reward"]]
 ## a near ghost
 
 ```{r}
-prior <- dnorm(possible_a, believe_a, 0.01)
+prior <- dnorm(possible_a, believe_a, 0.005)
 prior <- prior / sum(prior)
 ```
 
