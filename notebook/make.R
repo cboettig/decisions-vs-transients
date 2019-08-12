@@ -11,7 +11,8 @@ p3 <- callr::r_bg(function() rmarkdown::render("notebook/discrete-sims.Rmd") )
 
 
 
-p4 <- callr::r_bg(function() rmarkdown::render("notebook/may-outbreak-ghost-2.Rmd") )
+p4 <- callr::r_bg(function() rmarkdown::render("notebook/may-outbreak-ghost.Rmd") )
+p5 <- callr::r_bg(function() rmarkdown::render("notebook/may-outbreak-ghost-2.Rmd") )
 
 
 callr::poll(list(p4), -1)
