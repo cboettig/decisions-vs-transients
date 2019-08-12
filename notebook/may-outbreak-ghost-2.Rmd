@@ -244,6 +244,12 @@ sim <- mdp_learning(transition, reward, discount,
 ```
 
 
+
+```{r}
+saveRDS(sim, "sim-ghost-learning-2.Rds")
+```
+
+
 ```{r}
 ```
 

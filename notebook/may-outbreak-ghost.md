@@ -28,7 +28,7 @@ reward_fn <- function(x,h) - damage * x ^ 2 - control * h
 discount <- 0.98
 
 
-states <- seq(0,2, length=200)
+states <- seq(0,2, length=140)
 actions <- states
 observations <- states
 sigma_g <- 0.05
@@ -54,7 +54,7 @@ Range of possible a that covers tipping in both directions:
 ``` r
 possible_a <- seq(.25, .34, by = 0.005)
 true_a <- 0.27   ## reality has just a transient.  use  0.277 for stronger ghost
-believe_a <- 0.29 ## believe there's an attractor
+believe_a <- 0.295 ## believe there's an attractor
 true_i <- which.min(abs(possible_a - true_a))
 ```
 
@@ -190,7 +190,7 @@ reward <- models[[1]][["reward"]]
 ## a near ghost
 
 ``` r
-prior <- dnorm(possible_a, believe_a, 0.01)
+prior <- dnorm(possible_a, believe_a, 0.005)
 prior <- prior / sum(prior)
 ```
 
@@ -204,6 +204,7 @@ data.frame(a = possible_a, probability = prior) %>%
 ![](may-outbreak-ghost_files/figure-gfm/unnamed-chunk-19-1.png)<!-- -->
 
 ``` r
+set.seed(12345)
 sim <- mdp_learning(transition, reward, discount, 
                     x0 = x0, 
                     Tmax = Tmax, 
@@ -233,3 +234,7 @@ sim <- mdp_learning(transition, reward, discount,
 ```
 
 ![](may-outbreak-ghost_files/figure-gfm/unnamed-chunk-22-1.png)<!-- -->
+
+``` r
+saveRDS(sim, "sim-ghost-learning.Rds")
+```
