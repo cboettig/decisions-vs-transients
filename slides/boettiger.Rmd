@@ -190,7 +190,7 @@ arima_forecast %>% ggplot(aes(t)) +
 
 ---
 layout: true
-background-image: linear-gradient(to right, rgba(50, 50, 50, .6), rgba(50, 50, 50, .9)), url(img/royalsociety/snake.jpg)
+background-image: linear-gradient(to right, rgba(50, 50, 50, .8), rgba(50, 50, 50, .9)), url(img/royalsociety/snake.jpg)
 background-size: 120%
 background-position: center
 class: left, top, inverse
@@ -235,7 +235,7 @@ det  %>%
 ```
 ---
 layout: true
-background-image: linear-gradient(to right, rgba(50, 50, 50, .7), rgba(50, 50, 50, .95)), url(img/royalsociety/gentoo-penguin.jpg)
+background-image: linear-gradient(to right, rgba(50, 50, 50, .8), rgba(50, 50, 50, .95)), url(img/royalsociety/gentoo-penguin.jpg)
 background-size: 150%
 class: center, top, inverse
 background-position: left
@@ -346,7 +346,7 @@ background-position: center
 - Noise creates dynamics that are deeply challenging for both inference & decision-making... 
 
 ---
-background-image: linear-gradient(to right, rgba(150, 150, 150, .6), rgba(150, 150, 150, .85)), url(img/royalsociety/reef-shark.jpg)
+background-image: linear-gradient(to right, rgba(50, 50, 50, .8), rgba(50, 50, 50, .9)), url(img/royalsociety/reef-shark.jpg)
 background-size: 120%
 class: top, inverse
 background-position: center
@@ -392,7 +392,7 @@ class: left
 
 ```{r posteriors, fig.width=13, fig.height=6}
 label <- c("no switch", "switch", "no ghost")
-
+pal <- viridis::viridis_pal()(3)
 df <- c("../data/no_switches.csv.xz", "../data/switches.csv.xz", "../data/weak_ghost.csv.xz") %>%
   map_dfr(read_csv, .id = "timeseries") %>% 
   mutate(timeseries = label[as.integer(timeseries)])
@@ -407,8 +407,8 @@ inset <- discrete_sims %>% mutate(series = label[series]) %>%
 p1 <- df %>% 
   ggplot((aes(value, fill=timeseries))) + 
   geom_histogram(alpha=0.9) + 
-  geom_vline(aes(xintercept=0.27, col = "no switch"), col= viridis::viridis_pal()(3)[1], lwd=2) + 
-  geom_vline(aes(xintercept=0.28, col = "no ghost"), col = viridis::viridis_pal()(3)[2], lwd=2) + 
+  geom_vline(aes(xintercept=0.27, col = "no switch"), col= pal[1], lwd=2) + 
+  geom_vline(aes(xintercept=0.28, col = "no ghost"), col = pal[2], lwd=2) + 
   ggplot2::scale_fill_viridis_d()
 
 vp <- grid::viewport(width = .5, height = 0.55, x = 0.35, y = 0.7)
@@ -424,17 +424,223 @@ disp()
 
 ---
 layout: true
-background-image: linear-gradient(to right, rgba(50, 50, 50, .6), rgba(50, 50, 50, .9)), url(img/royalsociety/forest-fire.jpg)
+background-image: linear-gradient(to right, rgba(30, 30, 30, .8), rgba(30, 30, 30, .9)), url(img/royalsociety/forest-fire.jpg)
 background-size: 120%
 class: center, top, inverse
 
+
+---
+
 # Descision Theory
-
----
-
 ### Management under uncertainty
+.pull-left[
+
+## Social
+
+### Utility fn
+
+]
+.pull-right[
+
+## Ecological
+
+### Transition fn
+
+]
 
 ---
+
+# Example systems
+
+.pull-left[
+## Outbreak
+
+![](img/flickr-vsmoothe-pine-beetle.jpg)
+
+]
+.pull-right[
+
+- manage at acceptable/endemic level?
+- supress entirely?
+
+]
+
+---
+
+```{r}
+library(MDPtoolbox)
+library(sarsop) # remotes::install_github("boettiger-lab/sarsop")
+library(tidyverse) # for plotting
+library(mdplearning)
+
+damage <- 0.05
+control <- 1
+reward_fn <- function(x,h) - damage * x ^ 2 - control * h
+discount <- 0.98
+
+
+states <- seq(0,2, length=200)
+actions <- states
+observations <- states
+sigma_g <- 0.05
+sigma_m <- 0.0
+
+r <- 0.8
+K <- 1.53
+q <- 2
+b <- .2
+eps <- states[2]/10
+Tmax <- 100
+
+may <- function(a){  
+  function(x, h){ # May
+    # x <- pmax(x - h, 0)   # harvest then recruit   
+    x + x * r * (1 - x / K)  - a * x ^ q / (x ^ q + b ^ q) + eps - h
+  }
+}
+
+possible_a <- seq(.25, .34, by = 0.005)
+true_a <- 0.27   ## reality has just a transient.  use  0.277 for stronger ghost
+believe_a <- 0.31 ## believe there's a strong attractor
+true_i <- which.min(abs(possible_a - true_a))
+```
+
+
+**True model: weak ghost attractor**
+
+```{r true_a}
+f <- may(true_a)
+tibble(x = states[1:120],
+       f = f(x,0) - x) %>%
+  ggplot(aes(x, f)) + 
+  geom_line(col="white") +
+  geom_point(col="white") + 
+  geom_hline(aes(yintercept = 0),col="white")
+```  
+
+---
+
+**Incorrect belief of bistable system**
+
+```{r a29}
+f <- may(0.29)
+tibble(x = states[1:120],
+       f = f(x,0) - x) %>%
+  ggplot(aes(x, f)) + 
+  geom_line(col="white") +
+  geom_point(col="white") + 
+  geom_hline(aes(yintercept = 0),col="white")
+```
+
+---
+
+**Incorrect belief of stronger bistable system**
+
+```{r a31}
+f <- may(believe_a)
+tibble(x = states[1:120],
+       f = f(x,0) - x) %>%
+  ggplot(aes(x, f)) + 
+  geom_line(col="white") +
+  geom_point(col="white") + 
+  geom_hline(aes(yintercept = 0), col="white")
+```
+
+
+---
+class: center, middle
+
+# Example management scenarios
+
+---
+
+
+
+
+```{r}
+m_true <- fisheries_matrices(states, actions, observations, reward_fn, 
+                        may(true_a), sigma_g, sigma_m, noise = "lognormal")
+
+
+m <- fisheries_matrices(states, actions, observations, reward_fn, 
+                        may(believe_a), sigma_g, sigma_m, noise = "lognormal")
+soln <- mdp_value_iteration(m$transition, m$reward, discount)
+opt_soln <- mdp_value_iteration(m_true$transition, m_true$reward, discount)
+
+```
+
+**no Intervention**
+
+```{r no_intervention}
+x0 <- which.min(abs(states - 0.1))
+no_policy <- numeric(length(states)) + 1
+
+df <- mdp_planning(m_true$transition, m_true$reward, discount, model_prior = c(1), 
+                   policy = no_policy, x0 = x0, Tmax = 100)
+
+df %>% mutate(state = states[state], action = actions[action]) %>% 
+  ggplot(aes(time, state)) +
+  geom_point(col="white")+
+  geom_line(aes(time, action), col="grey", lwd=2) + ylim(0,1.4)
+```
+
+
+
+---
+
+**Mistaken ghost for alternate stable state**:
+
+```{r mistaken_ghost}
+x0 <- which.min(abs(states - 0.1))
+no_policy <- numeric(length(states)) + 1
+
+df <- mdp_planning(m_true$transition, m_true$reward, discount, model_prior = c(1), 
+                   policy = soln$policy, x0 = x0, Tmax = 100)
+
+df %>% mutate(state = states[state], action = actions[action]) %>% 
+  ggplot(aes(time, state)) +
+  geom_point(col="white")+
+  geom_line(aes(time, action), col="grey", lwd=2) + ylim(0,1.4)
+```
+
+
+---
+
+## Adaptive managment: revising beliefs about the process
+
+---
+
+### Prior beliefs
+
+```{r priors}
+prior <- dnorm(possible_a, 0.29, 0.01)
+prior <- prior / sum(prior)
+data.frame(a = possible_a, probability = prior) %>%
+  ggplot(aes(a,prior)) + geom_bar(stat="identity", fill="white") +
+  geom_vline(aes(xintercept = true_a), col="white", lwd=1, lty=2) 
+```
+
+---
+
+### Learning too late
+
+
+---
+
+### More agnostic prior beliefs
+
+```{r priors_wide}
+prior <- dnorm(possible_a, 0.29, 0.01)
+prior <- prior / sum(prior)
+data.frame(a = possible_a, probability = prior) %>%
+  ggplot(aes(a,prior)) + geom_bar(stat="identity", fill="white") +
+  geom_vline(aes(xintercept = true_a), col="white", lwd=1, lty=2) 
+```
+
+---
+
+### Less learning, more caution
+
 
 
 
@@ -465,11 +671,20 @@ background-size: 120%
 
 # Acknowledgements
 
+.pull-left[
+
+Image Credits: 
+
+
+![](img/royalsociety.jpg) Photo Competition 
+]
+.pull-right[
+
 ![](img/hastings.jpg) 
 
 ![](img/nimbios.jpg)
 
-<!--
 - Lizzie Wolkovich
 - Henry Scharf
--->
+
+]
