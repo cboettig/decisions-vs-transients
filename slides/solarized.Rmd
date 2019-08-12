@@ -67,7 +67,7 @@ highs <- ex %>% dplyr::slice((n()-9):n()) %>% pull(reps)
 ```
 
 
-# Decisions vs transient dynamics: what could possibly go wrong?
+# What could possibly go wrong?
 
 ![](img/royalsociety/penguin-swim.jpg)
 
@@ -80,7 +80,7 @@ Image credit: [Royal Society Photo Competition](https://royalsociety.org/journal
 ---
 
 <div style='float:left;width:50%'>
-  <img src='img/city-mit-license.jpg' style='transform:translate(-20%, -10%);height:100%;object-fit:cover;overflow:hidden'>
+  <img src='img/city-slice.jpeg' style='transform:translate(-22%, -10%);height:100%;object-fit:cover;overflow:hidden'>
 </div>
 
 # in an era of predictive black-box models...
@@ -89,7 +89,7 @@ Image credit: [Royal Society Photo Competition](https://royalsociety.org/journal
 ---
 
 <div style='float:left;width:50%'>
-  <img src='img/royalsociety/pensive-polarbear.jpg' style='transform:translate(-20%, -10%);height:900px;overflow:hidden'>
+  <img src='img/royalsociety/pensive-polarbear-slice.jpg' style='transform:translate(-22%, -10%);height:990px; width:1329; overflow:hidden'>
 </div>
 
 # ... a need for theory & process-based models
@@ -173,13 +173,18 @@ arima_forecast %>% ggplot(aes(t)) +
 
 
 ---
+class: left
 
 # Statistical Issues
 
 ---
+class: left
 
 # Theoretical Issues
 
+--
+
+<img src="img/royalsociety/pensive-polarbear.jpg" width="400", style="float:center">
 
 ---
 
@@ -333,7 +338,9 @@ class: left
 
 ---
 
-- Given time-series observations, can we distinguish ghost attractors from real attractors?
+# Model Inference
+
+Given time-series observations, *can we distinguish* **ghost** attractors from **real** ones?
 
 ```{r disc_sims}
 discrete_sims <- read_csv("../data/discrete-sims.csv.xz")
@@ -348,7 +355,7 @@ class: left
 
 # Model Inference
 
-Hierarchical Bayesian estimation of stability using TensorFlow(R)
+Hierarchical Bayesian estimation of stability
 
 ```r
 library("greta")
@@ -361,6 +368,8 @@ a <- uniform(.25, .34) # Prior
 
 draws <- mcmc(model(a), n_samples = 1000, warmup = 3000, chains = 4)
 ```
+
+Using TensorFlow(R) via `greta` R package, <https://greta-stats.org>
 
 
 
@@ -398,13 +407,35 @@ disp()
 ```
 
 
+---
+
+# Model Inference
+
+(Full ensemble 500 length-3000 replicate timeseries)
+
+```{r}
+samples3 <- read_csv("../data/posterior_ensemble.csv.xz")
+samples3 %>%  
+  ggplot() + 
+  geom_histogram(aes(value), bins = 30, col=txtcolor)  +
+  geom_vline(aes(xintercept = 0.023), col = pal[1], lwd = 2)
+
+```
 
 
+---
+background-image: url(img/royalsociety/gentoo-penguin.jpg)
+background-position: left
+background-size: 140%
+class: center, top
+
+
+# Descision Theory
 
 ---
 
 # Descision Theory
-### Management under uncertainty
+
 .pull-left[
 
 ## Social
@@ -421,21 +452,29 @@ disp()
 ]
 
 ---
+class: middle
 
 # Example systems
 
-.pull-left[
-## Outbreak
+---
+background-image: url(img/royalsociety/forest-fire.jpg)
+background-position: center
+background-size: 120%
+class: center, top
 
-![](img/flickr-vsmoothe-pine-beetle.jpg)
+---
+background-image: url(img/royalsociety/methane_bubbles.jpg)
+background-position: center
+background-size: 100%
+class: center, top
 
-]
-.pull-right[
 
-- manage at acceptable/endemic level?
-- supress entirely?
+---
+background-image: url(img/flickr-vsmoothe-pine-beetle.jpg)
+background-position: center
+background-size: 100%
+class: center, top
 
-]
 
 ---
 
@@ -493,7 +532,7 @@ tibble(x = states[1:120],
 
 ---
 
-**Incorrect belief of bistable system**
+## Incorrect belief of bistable system
 
 ```{r a29}
 f <- may(0.29)
@@ -507,7 +546,7 @@ tibble(x = states[1:120],
 
 ---
 
-**Incorrect belief of stronger bistable system**
+## Incorrect belief of stronger bistable system
 
 ```{r a31}
 f <- may(believe_a)
@@ -563,7 +602,7 @@ df %>% mutate(state = states[state], action = actions[action]) %>%
 
 ---
 
-**Mistaken ghost for alternate stable state**:
+## Mistaken ghost for alternate stable state
 
 ```{r mistaken_ghost}
 x0 <- which.min(abs(states - 0.1))
@@ -618,7 +657,22 @@ data.frame(a = possible_a, probability = prior) %>%
 
 ## Less learning, more caution
 
-```{r}
+
+
+
+```{r eval=FALSE}
+sim <- readRDS("sim-ghost-learning-2.Rds")
+
+ sim$posterior %>% 
+  data.frame(time = 1:Tmax) %>%
+  filter(time %in% seq(1,Tmax, by = 5)) %>%
+  gather(param, probability, -time, factor_key =TRUE) %>% 
+  mutate(param = as.numeric(param)) %>% 
+  ggplot(aes(param, probability, group = time, alpha = time)) + 
+  geom_bar()
+
+library(patchwork)
+p1 + p2
 ```
 
 
@@ -642,10 +696,12 @@ Image Credits:
 
 **Publishing Photo Competition** 
 
---
+![](img/noaa.png) 
 
-- Lizzie Wolkovich
-- Henry Scharf
+
+Lizzie Wolkovich
+
+Henry Scharf
 
 ]
 .pull-right[
