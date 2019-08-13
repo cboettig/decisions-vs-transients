@@ -1,1 +1,663 @@
-slides/solarized.html
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
+  <head>
+    <title>Conservation decision-making under long transients</title>
+    <meta charset="utf-8" />
+    <meta name="author" content="Carl Boettiger" />
+    <meta name="date" content="2019-08-13" />
+    <link href="libs/remark-css-0.0.1/default.css" rel="stylesheet" />
+    <link rel="stylesheet" href="solarized-light.css" type="text/css" />
+  </head>
+  <body>
+    <textarea id="source">
+
+
+background-color: #fdf6e3
+background-image: url(img/royalsociety/penguin-swim.jpg)
+background-position: center
+background-size: 120%
+class: center, top
+
+# Conservation decision-making under long transients
+
+## Carl Boettiger
+
+### *UC Berkeley*
+
+
+---
+layout: true
+background-color: #fdf6e3
+class: top
+
+---
+class: center, top
+
+
+
+
+
+
+
+
+
+# What could possibly go wrong?
+
+&lt;img src="img/royalsociety/penguin-swim.jpg" width="500px"&gt;
+
+???
+
+Image credit: [Royal Society Photo Competition](https://royalsociety.org/journals/publishing-activities/photo-competition/)
+
+
+
+---
+
+&lt;div style='float:left;width:50%'&gt;
+  &lt;img src='img/city-slice.jpeg' style='transform:translate(-22%, -10%);height:100%;object-fit:cover;overflow:hidden'&gt;
+&lt;/div&gt;
+
+# in an era of predictive black-box models...
+
+
+---
+
+&lt;div style='float:left;width:50%'&gt;
+  &lt;img src='img/royalsociety/pensive-polarbear-slice.jpg' style='transform:translate(-22%, -10%);height:990px; width:1329; overflow:hidden'&gt;
+&lt;/div&gt;
+
+# ... a need for theory &amp; process-based models
+
+
+---
+
+background-image: url(img/royalsociety/snake.jpg)
+background-position: center
+background-size: 120%
+class: center, top
+
+# Ghost Attractors
+
+
+---
+class: center
+
+# Ghost Attractors
+
+![](img/ghost.png)
+
+&lt;br/&gt;
+Hastings et al. *Science* (2018)
+
+---
+
+# A Ghost Attractor
+
+![](solarized_files/figure-html/unnamed-chunk-3-1.png)&lt;!-- --&gt;
+
+---
+
+# Simple ARIMA forecast:
+
+
+
+
+![](solarized_files/figure-html/arima_data-1.png)&lt;!-- --&gt;
+
+
+---
+
+# Simple ARIMA forecast:
+
+![](solarized_files/figure-html/arima_forecast1-1.png)&lt;!-- --&gt;
+
+
+
+---
+
+# Simple ARIMA forecast:
+
+![](solarized_files/figure-html/arima_forecast-1.png)&lt;!-- --&gt;
+
+
+---
+class: left
+
+# Statistical Issues
+
+
+.pull-left[
+
+- sufficient data
+
+- accurate measurements
+
+- appropriate model
+
+- numerical/computational issues
+
+- ...
+
+]
+
+
+.pull-right[
+&lt;img src="img/royalsociety/ballons.jpg" width="400", style="float:center"&gt;
+]
+
+
+---
+class: left
+
+# Theoretical Issues
+
+
+.pull-left[
+
+... Issues run deeper: transients hard to infer  *even under idealized conditions*
+
+
+#### *Stochastic* dynamics *qualitatively* alter the picture
+
+]
+.pull-right[
+&lt;img src="img/royalsociety/pensive-polarbear.jpg" width="400", style="float:center"&gt;
+]
+
+--
+
+Knowing the correct model is not enough
+
+---
+
+### A look at a candidate model
+
+
+`$$X_{t+1} = X_t + \underbrace{X_t r \left(1 -\frac{X_t}{K} \right)}_{\textrm{logistic growth}}  - \underbrace{\frac{a X_t ^ Q}{X_t^ Q + H ^ Q}}_{\textrm{saturating consumption}} + \underbrace{\xi_t X_t}_{\textrm{environmental noise}}$$`
+
+![](solarized_files/figure-html/theory_f-1.png)&lt;!-- --&gt;
+
+---
+
+## potential well diagram
+
+![](solarized_files/figure-html/theory_U-1.png)&lt;!-- --&gt;
+
+---
+
+## deterministic skeleton timeseries 
+
+![](solarized_files/figure-html/det-1.png)&lt;!-- --&gt;
+
+---
+
+# Stochastic simulations
+
+![](solarized_files/figure-html/stoch1-1.png)&lt;!-- --&gt;
+
+
+---
+
+# Stochastic simulations
+
+
+![](solarized_files/figure-html/stoch2-1.png)&lt;!-- --&gt;
+
+
+
+---
+
+# Stochastic simulations
+
+
+![](solarized_files/figure-html/stoch_all-1.png)&lt;!-- --&gt;
+
+---
+
+# Stochastic simulations
+
+
+![](solarized_files/figure-html/ensemble-1.png)&lt;!-- --&gt;
+
+
+
+---
+
+# Stochastic simulations
+
+
+![](solarized_files/figure-html/wtf-1.png)&lt;!-- --&gt;
+
+
+---
+
+# Stochastic simulations
+
+**First-passage times**
+
+
+
+![](solarized_files/figure-html/fpt-1.png)&lt;!-- --&gt;
+
+---
+class: top, left
+
+## Long transient dynamics can
+## also create stochastic phenomena
+
+--
+
+- Emergent ensemble dynamics not predicted by the deterministic model
+
+--
+
+- But intuition is simple: noise helps 'jump' the ghost
+
+--
+
+- Noise creates dynamics that are deeply challenging for both inference &amp; decision-making... 
+
+---
+
+background-image: url(img/royalsociety/reef-shark.jpg)
+background-position: center
+background-size: 120%
+class: center, top
+
+# Challenges to Model Inference
+
+---
+
+# Model Inference
+
+Given time-series observations, *can we distinguish* **ghost** attractors from **real** ones?
+
+![](solarized_files/figure-html/disc_sims-1.png)&lt;!-- --&gt;
+
+---
+class: left
+
+# Model Inference
+
+Hierarchical Bayesian estimation of stability
+
+```r
+library("greta")
+
+mean &lt;- x_t + r * x_t * (1 - x_t / K) - 
+        a * x_t ^ q / (x_t ^ q + b ^ q)
+distribution(x_t1) &lt;- normal(mean, sigma_g * x_t)
+
+a &lt;- uniform(.25, .34) # Prior
+
+draws &lt;- mcmc(model(a), n_samples = 1000, warmup = 3000, chains = 4)
+```
+
+Using TensorFlow(R) via `greta` R package, &lt;https://greta-stats.org&gt;
+
+
+
+---
+class: left
+
+# Model Inference
+
+![](solarized_files/figure-html/posteriors-1.png)&lt;!-- --&gt;
+
+
+---
+
+# Model Inference
+
+(Full ensemble 500 length-3000 replicate timeseries)
+
+![](solarized_files/figure-html/unnamed-chunk-6-1.png)&lt;!-- --&gt;
+
+
+---
+background-image: url(img/chess.jpg)
+background-position: left
+background-size: 120%
+class: center, bottom
+
+
+# Decision Theory
+
+---
+class: center
+
+# Decision Theory
+
+.pull-left[
+
+## Societal Dynamics
+
+Utility function `\(U(x_t,a_t)\)`
+
+Given state `\(x_t\)` and action `\(a_t\)`, balance
+costs and benefits.
+
+&lt;img src="img/royalsociety/balance.jpg" width="300px"&gt;
+
+]
+
+--
+
+.pull-right[
+
+## Ecological Dynamics
+
+Transition function (forecast probabilities) `\(f(x,a)\)`
+
+&lt;img src="solarized_files/figure-html/posteriors-1.png" width="400px"&gt;
+
+]
+
+---
+class: middle, center
+
+# Potential contexts
+
+--
+
+*Tipping point or ghost?*
+
+---
+background-image: url(img/royalsociety/forest-fire.jpg)
+background-position: center
+background-size: 120%
+class: center, top
+
+---
+background-image: url(img/royalsociety/methane_bubbles.jpg)
+background-position: center
+background-size: 100%
+class: center, top
+
+
+---
+background-image: url(img/flickr-vsmoothe-pine-beetle.jpg)
+background-position: center
+background-size: 100%
+class: center, top
+
+
+---
+
+
+
+
+## True model: weak ghost attractor
+
+![](solarized_files/figure-html/true_a-1.png)&lt;!-- --&gt;
+
+---
+
+## Incorrect belief of bistable system
+
+![](solarized_files/figure-html/a29-1.png)&lt;!-- --&gt;
+
+---
+
+## Incorrect belief of stronger bistable system
+
+![](solarized_files/figure-html/a31-1.png)&lt;!-- --&gt;
+
+
+
+---
+
+
+
+
+## Simulation under *no intervention*
+
+
+
+![](solarized_files/figure-html/unnamed-chunk-9-1.png)&lt;!-- --&gt;
+
+
+
+---
+
+## Mistaken ghost for alternate stable state
+
+![](solarized_files/figure-html/mistaken_ghost-1.png)&lt;!-- --&gt;
+
+
+---
+class: center
+
+# Adaptive Management:
+
+### Updating beliefs
+
+&lt;img src="img/royalsociety/waiting-in-the-shallows.jpg" width="450"&gt;
+
+--
+
+*Reinforcement Learning*
+
+--
+
+(Markov Decision Process over possible models with Bayesian updating)
+
+---
+
+## Prior beliefs
+
+![](solarized_files/figure-html/priors-1.png)&lt;!-- --&gt;
+
+---
+
+## Learning late
+
+
+
+![](solarized_files/figure-html/learning-1.png)&lt;!-- --&gt;
+
+---
+
+## Outcome
+
+![](solarized_files/figure-html/unnamed-chunk-10-1.png)&lt;!-- --&gt;
+
+
+---
+
+## More agnostic prior beliefs
+
+![](solarized_files/figure-html/priors_wide-1.png)&lt;!-- --&gt;
+
+---
+
+## Less learning, more caution
+
+
+![](solarized_files/figure-html/less-learning-1.png)&lt;!-- --&gt;
+
+---
+
+## Less learning, more caution
+
+
+![](solarized_files/figure-html/unnamed-chunk-11-1.png)&lt;!-- --&gt;
+
+---
+class: middle
+
+# An emergent precautionary principle?
+
+&lt;!-- Better to be ignorant than wrong --&gt;
+
+---
+class: top, left
+
+# Conclusions
+
+&lt;img src="solarized_files/figure-html/arima_forecast-1.png" width="100px" height="60px"&gt; Ghost attractors look like real attractor but behave differently 
+
+--
+
+&lt;img src="solarized_files/figure-html/wtf-1.png" width="100px" height="60px"&gt; Stochastic ghosts `\(\neq\)` deterministic ones 
+
+--
+
+&lt;img src="solarized_files/figure-html/posteriors-1.png" width="100px" height="60px"&gt; This makes model inference hard! 
+
+--
+
+&lt;img src="img/royalsociety/forest-fire.jpg" width="100px" height="60px"&gt; .. and can lead to very bad decisions! 
+
+--
+
+&lt;img src="solarized_files/figure-html/learning-1.png" width="100px" height="60px"&gt; Reinforcement learning can help deal with uncertainty 
+
+--
+
+&lt;img src="solarized_files/figure-html/less-learning-1.png" width="100px" height="60px"&gt; Precaution is sometimes better than knowledge 
+
+---
+class: center, top
+background-image: url(img/royalsociety/penguin-swim.jpg)
+background-size: 140%
+
+# Thanks!
+
+
+
+---
+class: center
+
+# Acknowledgements
+
+.pull-left[
+
+Image Credits: 
+
+![](img/royalsociety.jpg) 
+
+
+![](img/noaa.png) 
+
+
+Lizzie Wolkovich
+
+Henry Scharf
+
+]
+.pull-right[
+
+![](img/hastings.jpg) 
+
+![](img/nimbios.jpg)
+
+
+]
+
+Code, slides, etc: &lt;https://github.com/cboettig/decisions-vs-transients&gt;
+
+
+---
+
+# Traces for single time-series
+
+![](solarized_files/figure-html/unnamed-chunk-12-1.png)&lt;!-- --&gt;
+
+---
+
+# Traces for the ensemble fit
+
+![](solarized_files/figure-html/unnamed-chunk-13-1.png)&lt;!-- --&gt;
+    </textarea>
+<style data-target="print-only">@media screen {.remark-slide-container{display:block;}.remark-slide-scaler{box-shadow:none;}}</style>
+<script src="https://remarkjs.com/downloads/remark-latest.min.js"></script>
+<script>var slideshow = remark.create({
+"highlightStyle": "solarized-light",
+"highlightLines": true,
+"countIncrementalSlides": false,
+"slideNumberFormat": "%current%"
+});
+if (window.HTMLWidgets) slideshow.on('afterShowSlide', function (slide) {
+  window.dispatchEvent(new Event('resize'));
+});
+(function(d) {
+  var s = d.createElement("style"), r = d.querySelector(".remark-slide-scaler");
+  if (!r) return;
+  s.type = "text/css"; s.innerHTML = "@page {size: " + r.style.width + " " + r.style.height +"; }";
+  d.head.appendChild(s);
+})(document);
+
+(function(d) {
+  var el = d.getElementsByClassName("remark-slides-area");
+  if (!el) return;
+  var slide, slides = slideshow.getSlides(), els = el[0].children;
+  for (var i = 1; i < slides.length; i++) {
+    slide = slides[i];
+    if (slide.properties.continued === "true" || slide.properties.count === "false") {
+      els[i - 1].className += ' has-continuation';
+    }
+  }
+  var s = d.createElement("style");
+  s.type = "text/css"; s.innerHTML = "@media print { .has-continuation { display: none; } }";
+  d.head.appendChild(s);
+})(document);
+// delete the temporary CSS (for displaying all slides initially) when the user
+// starts to view slides
+(function() {
+  var deleted = false;
+  slideshow.on('beforeShowSlide', function(slide) {
+    if (deleted) return;
+    var sheets = document.styleSheets, node;
+    for (var i = 0; i < sheets.length; i++) {
+      node = sheets[i].ownerNode;
+      if (node.dataset["target"] !== "print-only") continue;
+      node.parentNode.removeChild(node);
+    }
+    deleted = true;
+  });
+})();</script>
+
+<script>
+(function() {
+  var links = document.getElementsByTagName('a');
+  for (var i = 0; i < links.length; i++) {
+    if (/^(https?:)?\/\//.test(links[i].getAttribute('href'))) {
+      links[i].target = '_blank';
+    }
+  }
+})();
+</script>
+
+<script>
+slideshow._releaseMath = function(el) {
+  var i, text, code, codes = el.getElementsByTagName('code');
+  for (i = 0; i < codes.length;) {
+    code = codes[i];
+    if (code.parentNode.tagName !== 'PRE' && code.childElementCount === 0) {
+      text = code.textContent;
+      if (/^\\\((.|\s)+\\\)$/.test(text) || /^\\\[(.|\s)+\\\]$/.test(text) ||
+          /^\$\$(.|\s)+\$\$$/.test(text) ||
+          /^\\begin\{([^}]+)\}(.|\s)+\\end\{[^}]+\}$/.test(text)) {
+        code.outerHTML = code.innerHTML;  // remove <code></code>
+        continue;
+      }
+    }
+    i++;
+  }
+};
+slideshow._releaseMath(document);
+</script>
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+(function () {
+  var script = document.createElement('script');
+  script.type = 'text/javascript';
+  script.src  = 'https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-MML-AM_CHTML';
+  if (location.protocol !== 'file:' && /^https?:/.test(script.src))
+    script.src  = script.src.replace(/^https?:/, '');
+  document.getElementsByTagName('head')[0].appendChild(script);
+})();
+</script>
+  </body>
+</html>
