@@ -199,7 +199,6 @@ class: left
 
 ... Issues run deeper: transients hard to infer  *even under idealized conditions*
 
---
 
 
 #### *Stochastic* dynamics *qualitatively* alter the picture
@@ -754,8 +753,9 @@ Tmax <- 100
 ```
 
 ---
+class: middle
 
-# An emergent precautionary principle
+# An emergent precautionary principle?
 
 <!-- Better to be ignorant than wrong -->
 
