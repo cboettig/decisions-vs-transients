@@ -17,6 +17,7 @@ output:
 
 ---
 
+background-color: #fdf6e3
 background-image: url(img/royalsociety/penguin-swim.jpg)
 background-position: center
 background-size: 120%
@@ -26,13 +27,16 @@ class: center, top
 
 ## Carl Boettiger
 
-## UC Berkeley
+### *UC Berkeley*
+
+
 ---
 layout: true
 background-color: #fdf6e3
 class: top
 
 ---
+class: center, top
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(#dev.args=list(bg="transparent"), 
@@ -69,7 +73,7 @@ highs <- ex %>% dplyr::slice((n()-9):n()) %>% pull(reps)
 
 # What could possibly go wrong?
 
-![](img/royalsociety/penguin-swim.jpg)
+<img src="img/royalsociety/penguin-swim.jpg" width="500px">
 
 ???
 
