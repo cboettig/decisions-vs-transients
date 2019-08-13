@@ -5,7 +5,7 @@ institute: "UC Berkeley"
 date: "`r Sys.Date()`"
 output:
   xaringan::moon_reader:
-    css: ["default","solarized-light.css"]
+    css: ["default", "solarized-light.css"]
     lib_dir: libs
     seal: false
     nature:
@@ -30,7 +30,7 @@ class: center, top
 ---
 layout: true
 background-color: #fdf6e3
-class: center, top
+class: top
 
 ---
 
@@ -106,6 +106,7 @@ class: center, top
 
 
 ---
+class: center
 
 # Ghost Attractors
 
@@ -142,7 +143,7 @@ arima_forecast <- data %>% filter(reps == lows[[6]]) %>% select(t,x) %>% bind_co
 ```{r arima_data}
 arima_forecast %>% filter(t < 2000) %>%
   ggplot(aes(t)) + 
-  geom_line(aes(y=x),  lwd = 1, col=pal[1]) +
+  geom_line(aes(y=x),  lwd = 2, col=pal[1]) +
   xlim(0,3000) + ylim(0, 1.6)+ ylab("x")
 
 
@@ -182,12 +183,26 @@ class: left
 
 # Statistical Issues
 
+
 .pull-left[
 
+- sufficient data
+
+- accurate measurements
+
+- appropriate model
+
+- numerical/computational issues
+
+- ...
+
 ]
+
+
 .pull-right[
 <img src="img/royalsociety/ballons.jpg" width="400", style="float:center">
 ]
+
 
 ---
 class: left
@@ -200,13 +215,16 @@ class: left
 ... Issues run deeper: transients hard to infer  *even under idealized conditions*
 
 
-
 #### *Stochastic* dynamics *qualitatively* alter the picture
 
 ]
 .pull-right[
 <img src="img/royalsociety/pensive-polarbear.jpg" width="400", style="float:center">
 ]
+
+--
+
+Knowing the correct model is not enough
 
 ---
 
@@ -335,7 +353,7 @@ passage %>% ggplot(aes(tau)) +
 ```
 
 ---
-class: left
+class: top, left
 
 ## Long transient dynamics can
 ## also create stochastic phenomena
@@ -354,9 +372,12 @@ class: left
 
 ---
 
-# Challenges to Model Inference
+background-image: url(img/royalsociety/reef-shark.jpg)
+background-position: center
+background-size: 120%
+class: center, top
 
-![](img/royalsociety/reef-shark.jpg)
+# Challenges to Model Inference
 
 ---
 
@@ -402,7 +423,7 @@ class: left
 
 ```{r posteriors, fig.width=13, fig.height=6}
 label <- c("no switch", "switch", "no ghost")
-df <- c("../data/no_switches.csv.xz", "../data/switches.csv.xz", "../data/weak_ghost.csv.xz") %>%
+discrete_posteriors <- c("../data/no_switches.csv.xz", "../data/switches.csv.xz", "../data/weak_ghost.csv.xz") %>%
   map_dfr(read_csv, .id = "timeseries") %>% 
   mutate(timeseries = label[as.integer(timeseries)])
 
@@ -412,7 +433,7 @@ inset <- discrete_sims %>% mutate(series = label[series]) %>%
 
 
 
-p1 <- df %>% 
+p1 <- discrete_posteriors %>% 
   ggplot((aes(value, fill=timeseries))) + 
   geom_histogram(alpha=0.9, show.legend = FALSE) + 
   geom_vline(aes(xintercept=0.27, col = "no switch"), col= pal[1], lwd=3) + 
@@ -446,37 +467,52 @@ samples3 %>%
 
 
 ---
-background-image: url(img/royalsociety/gentoo-penguin.jpg)
+background-image: url(img/chess.jpg)
 background-position: left
-background-size: 140%
-class: center, top
+background-size: 120%
+class: center, bottom
 
 
 # Decision Theory
 
 ---
+class: center
 
 # Decision Theory
 
 .pull-left[
 
-## Social
+## Societal Dynamics
 
-### Utility fn
+Utility function $U(x_t,a_t)$
+
+Given state $x_t$ and action $a_t$, balance
+costs and benefits.
+
+<img src="img/royalsociety/balance.jpg" width="300px">
 
 ]
+
+--
+
 .pull-right[
 
-## Ecological
+## Ecological Dynamics
 
-### Transition fn
+Transition function (forecast probabilities) $f(x,a)$
+
+<img src="solarized_files/figure-html/posteriors-1.png" width="400px">
 
 ]
 
 ---
-class: middle
+class: middle, center
 
-# Example systems
+# Potential contexts
+
+--
+
+*Tipping point or ghost?*
 
 ---
 background-image: url(img/royalsociety/forest-fire.jpg)
@@ -581,10 +617,6 @@ tibble(x = states[1:120],
 ```
 
 
----
-class: center, middle
-
-# Example Contexts
 
 ---
 
@@ -644,12 +676,21 @@ df %>%
 
 
 ---
+class: center
 
 # Adaptive Management:
 
 ### Updating beliefs
 
-<img src="img/royalsociety/waiting-in-the-shallows.jpg" width="500">
+<img src="img/royalsociety/waiting-in-the-shallows.jpg" width="450">
+
+--
+
+*Reinforcement Learning*
+
+--
+
+(Markov Decision Process over possible models with Bayesian updating)
 
 ---
 
@@ -671,7 +712,7 @@ data.frame(a = possible_a, probability = prior) %>%
 
 
 
-```{r}
+```{r learning}
 sim <- readRDS("../notebook/sim-ghost-learning.Rds")
 states <- seq(0,2, length=140)
 actions <- states
@@ -720,7 +761,7 @@ data.frame(a = possible_a, probability = prior) %>%
 ## Less learning, more caution
 
 
-```{r}
+```{r less-learning}
 sim2 <- readRDS("../notebook/sim-ghost-learning-2.Rds")
 states <- seq(0,2, length=200)
 actions <- states
@@ -759,15 +800,44 @@ class: middle
 
 <!-- Better to be ignorant than wrong -->
 
+---
+class: top, left
+
+# Conclusions
+
+<img src="solarized_files/figure-html/arima_forecast-1.png" width="100px" height="60px"> Ghost attractors look like real attractor but behave differently 
+
+--
+
+<img src="solarized_files/figure-html/wtf-1.png" width="100px" height="60px"> Stochastic ghosts $\neq$ deterministic ones 
+
+--
+
+<img src="solarized_files/figure-html/posteriors-1.png" width="100px" height="60px"> This makes model inference hard! 
+
+--
+
+<img src="img/royalsociety/forest-fire.jpg" width="100px" height="60px"> .. and can lead to very bad decisions! 
+
+--
+
+<img src="solarized_files/figure-html/learning-1.png" width="100px" height="60px"> Reinforcement learning can help deal with uncertainty 
+
+--
+
+<img src="solarized_files/figure-html/less-learning-1.png" width="100px" height="60px"> Precaution is sometimes better than knowledge 
 
 ---
 class: center, top
-background-image: url(img/royalsociety/bohemian-waxwing.jpg)
+background-image: url(img/royalsociety/penguin-swim.jpg)
 background-size: 140%
 
 # Thanks!
 
+
+
 ---
+class: center
 
 # Acknowledgements
 
@@ -794,3 +864,27 @@ Henry Scharf
 
 
 ]
+
+Code, slides, etc: <https://github.com/cboettig/decisions-vs-transients>
+
+
+---
+
+# Traces for single time-series
+
+```{r}
+discrete_posteriors %>% 
+  ggplot(aes(t, value, group=chain, col=chain)) + 
+  geom_line(show.legend = FALSE) +
+  facet_wrap(~timeseries)
+```
+
+---
+
+# Traces for the ensemble fit
+
+```{r}
+samples3 %>% 
+  ggplot(aes(t, value, group=chain, col=chain)) + 
+  geom_line(show.legend = FALSE) 
+```
