@@ -97,6 +97,11 @@ Image credit: [Royal Society Photo Competition](https://royalsociety.org/journal
 
 ---
 
+background-image: url(img/royalsociety/snake.jpg)
+background-position: center
+background-size: 120%
+class: center, top
+
 # Ghost Attractors
 
 
@@ -177,14 +182,32 @@ class: left
 
 # Statistical Issues
 
+.pull-left[
+
+]
+.pull-right[
+<img src="img/royalsociety/ballons.jpg" width="400", style="float:center">
+]
+
 ---
 class: left
 
 # Theoretical Issues
 
+
+.pull-left[
+
+... Issues run deeper: transients hard to infer  *even under idealized conditions*
+
 --
 
+
+#### *Stochastic* dynamics *qualitatively* alter the picture
+
+]
+.pull-right[
 <img src="img/royalsociety/pensive-polarbear.jpg" width="400", style="float:center">
+]
 
 ---
 
@@ -308,8 +331,8 @@ det_tau <- det %>% group_by(reps) %>% filter(x > 1.25) %>% summarise(tau = min(t
 
 ```{r fpt}
 passage %>% ggplot(aes(tau)) + 
-  geom_histogram(binwidth = 200, col=txtcolor) + 
-  geom_vline(aes(xintercept=det_tau), col=pal[1], lwd=2)
+  geom_histogram(binwidth = 200, fill=txtcolor) + 
+  geom_vline(aes(xintercept=det_tau), col=pal[1], lwd=3)
 ```
 
 ---
@@ -393,8 +416,8 @@ inset <- discrete_sims %>% mutate(series = label[series]) %>%
 p1 <- df %>% 
   ggplot((aes(value, fill=timeseries))) + 
   geom_histogram(alpha=0.9, show.legend = FALSE) + 
-  geom_vline(aes(xintercept=0.27, col = "no switch"), col= pal[1], lwd=2) + 
-  geom_vline(aes(xintercept=0.28, col = "no ghost"), col = pal[2], lwd=2) 
+  geom_vline(aes(xintercept=0.27, col = "no switch"), col= pal[1], lwd=3) + 
+  geom_vline(aes(xintercept=0.28, col = "no ghost"), col = pal[2], lwd=3) 
 
 vp <- grid::viewport(width = .4, height = 0.45, x = 0.35, y = 0.7)
 
@@ -417,8 +440,8 @@ disp()
 samples3 <- read_csv("../data/posterior_ensemble.csv.xz")
 samples3 %>%  
   ggplot() + 
-  geom_histogram(aes(value), bins = 30, col=txtcolor)  +
-  geom_vline(aes(xintercept = 0.023), col = pal[1], lwd = 2)
+  geom_histogram(aes(value), bins = 30, fill=txtcolor)  +
+  geom_vline(aes(xintercept = 0.023), col = pal[1], lwd = 3)
 
 ```
 
@@ -430,11 +453,11 @@ background-size: 140%
 class: center, top
 
 
-# Descision Theory
+# Decision Theory
 
 ---
 
-# Descision Theory
+# Decision Theory
 
 .pull-left[
 
@@ -562,11 +585,9 @@ tibble(x = states[1:120],
 ---
 class: center, middle
 
-# Example management scenarios
+# Example Contexts
 
 ---
-
-
 
 
 ```{r results="hide"}
@@ -589,13 +610,15 @@ no_policy <- numeric(length(states)) + 1
 
 df <- mdp_planning(m_true$transition, m_true$reward, discount, model_prior = c(1), 
                    policy = no_policy, x0 = x0, Tmax = 100)
+```
 
-df %>% mutate(state = states[state], action = actions[action]) %>% 
+```{r}
+df %>% mutate(state = states[state], action = 5*actions[action]) %>% 
   select(state, action, time) %>% 
   gather(series, state, -time) %>%
   ggplot(aes(time, state, col=series)) +
   geom_line(lwd=2) + 
-  ylim(0,1.4)
+  ylim(0,1.3)
 ```
 
 
@@ -611,46 +634,86 @@ no_policy <- numeric(length(states)) + 1
 df <- mdp_planning(m_true$transition, m_true$reward, discount, model_prior = c(1), 
                    policy = soln$policy, x0 = x0, Tmax = 100)
 
-df %>% mutate(state = states[state], action = actions[action]) %>% 
-select(state, action, time) %>% 
+df %>%
+  mutate(state = states[state], action = 5*actions[action]) %>% 
+  select(state, action, time) %>% 
   gather(series, state, -time) %>%
   ggplot(aes(time, state, col=series)) +
   geom_line(lwd=2) + 
-  ylim(0,1.4)
+  ylim(0,1.3)
 ```
 
 
 ---
 
-## Adaptive managment: revising beliefs about the process
+# Adaptive Management:
+
+### Updating beliefs
+
+<img src="img/royalsociety/waiting-in-the-shallows.jpg" width="500">
 
 ---
 
-### Prior beliefs
+## Prior beliefs
 
 ```{r priors}
-prior <- dnorm(possible_a, 0.29, 0.01)
+prior <- dnorm(possible_a, 0.295, 0.005)
 prior <- prior / sum(prior)
 data.frame(a = possible_a, probability = prior) %>%
-  ggplot(aes(a,prior)) + geom_bar(stat="identity", col=txtcolor) +
-  geom_vline(aes(xintercept = true_a), lwd=1, lty=2, col=pal[1]) 
+  ggplot(aes(a,prior)) + 
+  geom_bar(stat="identity", fill=pal[1], alpha=0.6) +
+  geom_vline(aes(xintercept = true_a), lwd=3, lty=2, col=pal[1]) + 
+  ylim(0, 0.6)
 ```
 
 ---
 
-### Learning too late
+## Learning late
+
+
+
+```{r}
+sim <- readRDS("../notebook/sim-ghost-learning.Rds")
+states <- seq(0,2, length=140)
+actions <- states
+Tmax <- 100
+
+ sim$posterior %>% 
+  data.frame(time = 1:Tmax) %>%
+  filter(time %in% seq(1,Tmax, by = 10), time < 50) %>%
+  gather(param, probability, -time, factor_key =TRUE) %>% 
+  mutate(param = as.numeric(param)) %>% 
+  ggplot(aes(x = param, y = probability, group = time, alpha = time)) + 
+  geom_bar(stat="identity", position = "identity", show.legend = FALSE, fill=pal[1]) 
+```
+
+---
+
+## Outcome
+
+```{r}
+ sim$df %>% 
+   mutate(state = states[state], action = 5*actions[action]) %>% 
+  select(-value, -obs) %>% 
+  gather(series, state, -time) %>% 
+  ggplot(aes(time, state, color = series)) +
+  geom_line(lwd=2) +
+  ylim(0,1.3) +
+  ylab("state / action")
+```
 
 
 ---
 
-### More agnostic prior beliefs
+## More agnostic prior beliefs
 
 ```{r priors_wide}
-prior <- dnorm(possible_a, 0.3, 0.01)
+prior <- dnorm(possible_a, 0.3, 0.05)
 prior <- prior / sum(prior)
 data.frame(a = possible_a, probability = prior) %>%
-  ggplot(aes(a,prior)) + geom_bar(stat="identity", col=txtcolor) +
-  geom_vline(aes(xintercept = true_a), lwd=1, lty=2, col=pal[1]) 
+  ggplot(aes(a,prior)) + geom_bar(stat="identity", fill=pal[1], alpha=0.5) +
+  geom_vline(aes(xintercept = true_a), lwd=3, lty=2, col=pal[2]) +
+  ylim(0,.3)
 ```
 
 ---
@@ -658,23 +721,43 @@ data.frame(a = possible_a, probability = prior) %>%
 ## Less learning, more caution
 
 
+```{r}
+sim2 <- readRDS("../notebook/sim-ghost-learning-2.Rds")
+states <- seq(0,2, length=200)
+actions <- states
+Tmax <- 100
 
-
-```{r eval=FALSE}
-sim <- readRDS("sim-ghost-learning-2.Rds")
-
- sim$posterior %>% 
+ sim2$posterior %>% 
   data.frame(time = 1:Tmax) %>%
-  filter(time %in% seq(1,Tmax, by = 5)) %>%
+  filter(time %in% seq(1,Tmax, by = 10), time < 50) %>%
   gather(param, probability, -time, factor_key =TRUE) %>% 
   mutate(param = as.numeric(param)) %>% 
-  ggplot(aes(param, probability, group = time, alpha = time)) + 
-  geom_bar()
-
-library(patchwork)
-p1 + p2
+  ggplot(aes(x = param, y = probability, group = time, alpha = time)) + 
+  geom_bar(stat="identity", position = "identity", show.legend = FALSE, fill=pal[1]) + 
+   ylim(0,0.3)
 ```
 
+---
+
+## Less learning, more caution
+
+
+```{r}
+ sim2$df %>% 
+   mutate(state = states[state], action = 5*actions[action]) %>% 
+  select(-value, -obs) %>% 
+  gather(series, state, -time) %>% 
+  ggplot(aes(time, state, color = series)) +
+  geom_line(lwd=2) + 
+  ylim(0,1.3) +
+  ylab("state / action")
+```
+
+---
+
+# An emergent precautionary principle
+
+<!-- Better to be ignorant than wrong -->
 
 
 ---
@@ -694,7 +777,6 @@ Image Credits:
 
 ![](img/royalsociety.jpg) 
 
-**Publishing Photo Competition** 
 
 ![](img/noaa.png) 
 

@@ -185,6 +185,11 @@ body {
   border: 1pt solid #93a1a1;
   padding: 1em;
 }
+
+em {
+  color: #d33682;
+}
+
 code {
   background-color: #eee8d5;
   padding: 2px;
