@@ -505,7 +505,7 @@ costs and benefits.
 
 Transition function (forecast probabilities) $f(x,a)$
 
-<img src="solarized_files/figure-html/posteriors-1.png" width="400px">
+<img src="index_files/figure-html/posteriors-1.png" width="400px">
 
 ]
 
@@ -809,15 +809,15 @@ class: top, left
 
 # Conclusions
 
-<img src="solarized_files/figure-html/arima_forecast-1.png" width="100px" height="60px"> Ghost attractors look like real attractor but behave differently 
+<img src="index_files/figure-html/arima_forecast-1.png" width="100px" height="60px"> Ghost attractors look like real attractor but behave differently 
 
 --
 
-<img src="solarized_files/figure-html/wtf-1.png" width="100px" height="60px"> Stochastic ghosts $\neq$ deterministic ones 
+<img src="index_files/figure-html/wtf-1.png" width="100px" height="60px"> Stochastic ghosts $\neq$ deterministic ones 
 
 --
 
-<img src="solarized_files/figure-html/posteriors-1.png" width="100px" height="60px"> This makes model inference hard! 
+<img src="index_files/figure-html/posteriors-1.png" width="100px" height="60px"> This makes model inference hard! 
 
 --
 
@@ -825,11 +825,11 @@ class: top, left
 
 --
 
-<img src="solarized_files/figure-html/learning-1.png" width="100px" height="60px"> Reinforcement learning can help deal with uncertainty 
+<img src="index_files/figure-html/learning-1.png" width="100px" height="60px"> Reinforcement learning can help deal with uncertainty 
 
 --
 
-<img src="solarized_files/figure-html/less-learning-1.png" width="100px" height="60px"> Precaution is sometimes better than knowledge 
+<img src="index_files/figure-html/less-learning-1.png" width="100px" height="60px"> Precaution is sometimes better than knowledge 
 
 ---
 class: center, top
