@@ -113,23 +113,24 @@ df %>% ggplot(aes(t, u, group=reps)) +
 
 
 ```{r}
-dR <- function(R, C, P, p) R * (1 - (R / K)) - p$xc * p$yc * C* R / (R + p$R0)
+dR <- function(R, C, P, p) R * (1 - R / p$K ) - p$xc * p$yc * C * R / (R + p$R0)
 
-dC <- function(R, C, P, p) p$xc * C * ((p$yc * R / (R + p$R0)) - 1) - p$xp * p$yp * P * C / (C + p$C0)
-dP <- function(R, C, P, p) p$xp * P * ((p$yp * C / (C + p$C0)) - 1) 
+dC <- function(R, C, P, p) p$xc * C * ( p$yc * R / (R + p$R0) - 1) - p$xp * p$yp * P * C / (C + p$C0)
+dP <- function(R, C, P, p) p$xp * P * ( p$yp * C / (C + p$C0) - 1) 
 
 
 ```
 
 
-```{r}
+
+````{r}
 stochastic_sim <- function(dR, dC, dP, p, const){
   
   # inits
   R <- C <- P <- numeric(const$Tmax)
   R[1] <- const$R0
   C[1] <- const$C0
-  P[1] <- const$R0
+  P[1] <- const$P0
   # random draws
   dB_R <- rnorm(const$Tmax, 0, p$sigma_r)
   dB_C <- rnorm(const$Tmax, 0, p$sigma_c)
@@ -154,9 +155,10 @@ stochastic_sim <- function(dR, dC, dP, p, const){
 ```
 
 ```{r}
+dt=0.01
 p <- list(xc = 0.4, yc = 2.009, xp = 0.08, yp = 2.876, R0 = 0.16129, C0 = 0.5, 
-K = 1.0, sigma_r = 0.0, sigma_c = 0.0, sigma_p = 0.0)
-const <- list(R0 = 1, C0 = 1, P0=1, Tmax = 1800, dt = 0.01)
+K = 1, sigma_r = 0.0, sigma_c = 0.0, sigma_p = 0.0)
+const <- list(R0 = .5, C0 = .5, P0=1, Tmax = 200/dt, dt = dt)
 
 ```
 
@@ -165,13 +167,101 @@ system.time({
   df <- future_map_dfr(1:10, function(reps) stochastic_sim(dR, dC, dP, p, const), .id = "reps")
 })
 ```
+
+
 ```{r}
-mean <- df %>% group_by(t) %>% summarise(P = mean(P)) %>% mutate(reps = 1)
+mean <- df %>% group_by(t) %>% summarise(R = mean(R), C = mean(C), P = mean(P)) %>% mutate(reps = 1)
+```
+
+
+```{r}
+mean %>% ggplot(aes(R, C, col=t)) + 
+  geom_path() 
 ```
 
 ```{r}
-df %>% ggplot(aes(t, P, group=reps)) + 
-  geom_line(alpha=0.1) +
-  geom_line(data = mean, color = "red")
+mean %>% ggplot(aes(C, P, col=t)) + 
+  geom_path() 
 ```
+
+```{r}
+mean %>% gather(species, pop, -t) %>%
+  ggplot(aes(t, pop, col=species)) + 
+  geom_line()
+```
+
+
+
+
+
+
+
+generic form
+
+```{r}
+
+
+stochsim <- function(f, pars, sigma, inits, Tmax, dt = 0.01){
+  
+  ## Initial conditions
+  X <- array(dim = c(Tmax, length(f)))
+  X[1,] <- inits
+  
+  ## Noise terms
+  dB <- lapply(sigma, function(s) rnorm(const$Tmax, 0, s))
+  
+  ## simulate
+  for(t in 1:(const$Tmax-1)){
+    for(i in length(f)){
+          X[t+1,i] <- max( 
+                  X[t,i] + f[[i]](X[t,], p) * dt  + X[t,i] * dB[[i]][t],
+                  0)
+    }
+  }
+  X
+}
+
+
+detsim <- function(f, pars, sigma, inits, Tmax, dt = 0.01){
+  X <- array(dim = c(Tmax, length(f)))
+  X[1,] <- inits
+  
+  ## Noise terms
+  dB <- lapply(sigma, function(s) rnorm(const$Tmax, 0, s))
+  for(t in 1:(const$Tmax-1)){
+    for(i in length(f)){
+          X[t+1,i] <-  X[t,i] + f[[i]](X[t,], p) * dt  
+    }
+  }
+  X
+}
+
+
+
+
+sim <- function(f, pars, sigma = numeric(length(f)), inits, Tmax, dt = 0.01){
+
+  stopifnot(equal(length(f), length(inits)))
+  stopifnot(equal(length(f), length(sigma)))
+  
+  if(!any(is.na(sigma)) & all(sigma > 0))
+    stochsim(f, pars, sigma, inits, Tmax, dt)
+  else
+    detsim(f, pars, sigma, inits, Tmax, dt)
+}
+```
+
+
+
+```{r}
+dR <- function(X, p) X[1] * (1 - (X[1] / p$K)) - p$xc * p$yc * X[2]* X[1] / (X[1] + p$R0)
+
+dC <- function(X, p) p$xc * x[2] * ((p$yc * X[1] / (X[1] + p$R0)) - 1) - p$xp * p$yp * X[3] * X[2] / (X[2] + p$C0)
+dP <- function(X, p) p$xp * X[3] * ((p$yp * X[2] / (X[2] + p$C0)) - 1) 
+
+```
+
+
+```{r}
+sim(list(dR, dC, dP), p, c(0.2,0.2,0.2), c(1,1,1), 1000)
 ```
