@@ -1,0 +1,56 @@
+---
+title: "Long transients can mislead model inference and decision making -- and what to do about it"
+date: "`r Sys.Date()`"
+author:
+  - name: Carl Boettiger
+    email: cboettig@berkeley.edu
+    affiliation: ucb
+    footnote: Corresponding Author
+address:
+  - code: ucb
+    address: "ESPM Department, University of California, 130 Mulford Hall Berkeley, CA 94720-3114, USA"
+abstract: |
+TBD
+journal: TBD
+layout: 5p
+bibliography: refs.bib
+output: rticles::elsevier_article
+
+---
+
+```{r include = FALSE}
+knitr::opts_chunk$set(echo = FALSE, cache = 1,  dev = "cairo_pdf", fig.width=4.5, fig.height=3.5)
+library(hrbrthemes)
+library(ggplot2)
+library(Cairo)
+library(extrafont)
+extrafont::loadfonts()
+```
+
+```{r message = FALSE}
+library(tidyverse)   # plotting and data manipulation
+```
+
+Periods of long transient dynamics have long been identified in the ecological systems.   Ecological @Hastings2018
+
+
+## Long transients when the underlying model is not known
+
+One of the more intuitive implications of the existence of long transients is the inherent risk in mistaking them for stable state dynamics.  For example, Figure \ref{armina} illustrates how a transient 
+
+
+### Stochastic dynamics and transients
+
+Stochastic dynamics can weaken the average influence of a ghost attractor, but long transients are still likely.  Stochastic dynamics can also make weak attractors behave essentially as ghost attractors.  
+
+
+# Methods
+
+Stochastic dynamic programming solutions were computed in R [@R] using value iteration using the package `MDPToolbox` [@Marescot2013; @MDPtoolbox].  Code to reproduce this analysis is available at <https://github.com/cboettig/decisions-vs-transients>
+
+
+
+\pagebreak 
+
+
+# References
