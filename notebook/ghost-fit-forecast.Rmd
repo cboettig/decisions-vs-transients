@@ -13,47 +13,51 @@ set.seed(123456)
 
 
 ```{r}
-data <- read_csv("../data/reps.csv.xz") %>% filter(t < 2000)
-data %>% ggplot(aes(t,x, group=reps)) + geom_line(alpha=0.02)
-```
-
-Divide this data into several groups based on 
-
-```{r}
-means <- data %>% group_by(reps) %>% summarise(ave = mean(x)) %>% arrange(ave)
-
-lows <- means %>% dplyr::slice(1:10) %>% pull(reps)
-highs <- means %>% dplyr::slice((n()-9):n()) %>% pull(reps)
-write_csv(data.frame(lows=lows,highs=highs), "../data/extremes.csv.xz")
-
-coding <- function(reps) case_when(
-  reps %in% lows ~ "low",
-  reps %in% highs ~ "high"
-)
-data %>% 
-  mutate(coding = coding(reps)) %>% 
-  na.omit() %>% 
-ggplot(aes(t, x, group=reps, color = coding)) + geom_line(alpha=0.5)
-
-#means %>% ggplot(aes(ave)) + geom_histogram(binwidth = 0.02)
-
+source("../R/ghost.R")
 ```
 
 
-## highs
+```{r}
+data <- vroom::vroom("../data/reps.csv.xz") %>% filter(t < 3000)
+## get tail cases for comparison
+ex <- data %>% group_by(reps) %>% summarise(ave = mean(x)) %>% arrange(ave)
+lows <- ex %>% dplyr::slice(1:10) %>% pull(reps)
+highs <- ex %>% dplyr::slice((n()-9):n()) %>% pull(reps)
+```
+
+
+
+```{r arima_forecast}
+library(stats)
+x <- data %>% filter(reps == lows[[6]], t < 2000) %>% pull(x) %>% as.ts() 
+fit <- arima(x)
+y <- predict(fit, n.ahead = 1000) %>% as.data.frame()
+y <- bind_rows(data.frame(pred = x, se = 0), y)
+arima_forecast <- data %>% filter(reps == lows[[6]]) %>% select(t,x) %>% bind_cols(y)
+```
+
+
+```{r arima_figure, message=FALSE, warning=FALSE}
+train <- arima_forecast %>% filter(t < 2000) 
+test <- arima_forecast %>% filter(t > 2000) 
+train %>%
+  ggplot(aes(t)) + 
+  geom_line(aes(y=x)) +
+  geom_line(aes(y=pred), lwd = 1, lty = 3, col = "red", data = test) + 
+  geom_ribbon(aes(y=pred, ymin=pred-se, ymax=pred+se), alpha = 0.4, fill = "red", data = test)  + 
+  geom_line(aes(y=x), data = test, lty = 2, col="blue") +
+  xlim(0,3000) + ylim(0, 1.6)+ ylab("x") + theme_minimal()
+
+
+```
+
+
+
+
 
 ```{r}
-wide <- data %>% 
-  filter(reps %in% highs) %>%
-  spread(reps, x) %>%
-  select(-t) %>% 
-  as.matrix()
+wide <- select(train, x) %>% as.matrix() 
 n <- dim(wide)[1]
-
-```
-
-
-```{r}
 x_t1 <- wide[-1,]
 x_t <- wide[-n,] 
 ```
@@ -135,144 +139,6 @@ samples %>% ggplot() +
   geom_vline(data = true, aes(xintercept = value), col = "red", lwd = 1) + 
   facet_wrap(~variable, scales = "free")
 
-write_csv(samples, "../data/posterior_highs.csv.xz")
-
 ```
 
 
-
-----
-
-## lows
-
-
-```{r}
-wide <- data %>% 
-  filter(reps %in% lows) %>%
-  spread(reps, x) %>%
-  select(-t) %>% 
-  as.matrix()
-n <- dim(wide)[1]
-
-```
-
-
-```{r}
-x_t1 <- wide[-1,]
-x_t <- wide[-n,] 
-```
-
-
-```{r}
-a <- uniform(0, 1)
-mean <- x_t + r * x_t * (1 - x_t / K) - a * x_t ^ Q / (x_t ^ Q + H ^ Q)
-distribution(x_t1) <- normal(mean, sigma * x_t)
-m <- model(a)
-```
-
-```{r }
-system.time({
-  draws2 <- mcmc(m, n_samples = 1000, warmup = 3000, chains = 4, verbose = FALSE)
-})
-```
-
-```{r}
-bayesplot::mcmc_trace(draws2)
-```
-
-```{r}
-samples2 <-  
-  map_dfr(draws2, 
-          function(x) data.frame(x, t = 1:dim(x)[1]), 
-          .id = "chain") %>% 
-  gather(variable, value, -t, -chain)
-
-samples2 %>% ggplot() + 
-  geom_histogram(aes(value), bins = 30)  +
-  geom_vline(data = true, aes(xintercept = value), col = "red", lwd = 1) + 
-  facet_wrap(~variable, scales = "free")
-
-write_csv(samples2, "../data/posterior_lows.csv.xz")
-```
-
-
-## Full ensemble
-
-
-
-```{r}
-wide <- data %>% 
-  spread(reps, x) %>%
-  select(-t) %>% 
-  as.matrix()
-n <- dim(wide)[1]
-
-```
-
-
-```{r}
-x_t1 <- wide[-1,]
-x_t <- wide[-n,] 
-```
-
-
-```{r}
-a <- uniform(0, 1)
-mean <- x_t + r * x_t * (1 - x_t / K) - a * x_t ^ Q / (x_t ^ Q + H ^ Q)
-distribution(x_t1) <- normal(mean, sigma * x_t)
-m <- model(a)
-```
-
-```{r }
-system.time({
-  draws3 <- mcmc(m, n_samples = 1000, warmup = 3000, chains = 6, verbose = FALSE)
-})
-```
-
-```{r}
-bayesplot::mcmc_trace(draws3)
-```
-
-```{r}
-samples3 <-  
-  map_dfr(draws3, 
-          function(x) data.frame(x, t = 1:dim(x)[1]), 
-          .id = "chain") %>% 
-  gather(variable, value, -t, -chain)
-
-samples3 %>% ggplot() + 
-  geom_histogram(aes(value), bins = 30)  +
-  geom_vline(data = true, aes(xintercept = value), col = "red", lwd = 1) + 
-  facet_wrap(~variable, scales = "free")
-
-
-write_csv(samples3, "../data/posterior_ensemble.csv.xz")
-```
-
-
-
-
-```{r }
-p <- list(r = .05, K = 2, Q = 5, H = .38, sigma = .02, a=0.023, N = 4e3, x0 = 0.2, N = 1e4)
-source("../R/ghost.R")
-p$a <- 0.021
-tf <- theory(p) %>% mutate(a = 0.021)
-
-p$a <- 0.023
-tf <- theory(p) %>% mutate(a = 0.023) %>% bind_rows(tf)
-
-p$a <- 0.024
-tf <- theory(p) %>% mutate(a = 0.024) %>% bind_rows(tf)
-
-tf <- tf %>% mutate(a = as.factor(a))
- 
-tf %>%
-  ggplot(aes(x, potential, col=a)) +
-  geom_line(lwd=1)
-
-```
-
-
-
-```{r}
-```
