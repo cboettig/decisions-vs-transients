@@ -272,30 +272,32 @@ posterior_sims <- map_dfr(a, function(a){
 
 ```{r}
 alpha <- 0.1
-training_data <- train %>% select(t,x) %>% mutate(reps="1", set = "training", alpha = 1)
+training_data <- train %>% select(t,x) %>% mutate(reps="1") #, set = "training")
 
 true_forecast <- 
   future_map_dfr(1:100, 
                  function(reps) sim(may, p), 
                  .id = "reps"
                  ) %>% 
-  mutate(t = t+2000,
-         set = "true",
-         alpha = alpha) %>% 
-  bind_rows(training_data)
+  mutate(t = t+2000) %>% 
+  bind_rows(training_data) %>% 
+  mutate(set = "true")
 
-predicted_forecast <- posterior_sims %>% 
-    mutate(t = t+2000,
-           set = "predicted",
-           alpha = alpha)
+predicted_forecast <- 
+  posterior_sims %>% 
+    mutate(t = t+2000) %>%
+    bind_rows(training_data) %>% 
+    mutate(set = "predicted")
 ```
 
 
 ```{r}
 bind_rows(predicted_forecast, true_forecast) %>% 
+#predicted_forecast %>%
   ggplot(aes(t,x)) +
   geom_line(aes(group = interaction(reps, set), col = set), alpha = .05) + 
   geom_line(data = training_data) + 
+  facet_wrap(~set) + 
   scale_color_solarized()
 ```
 
