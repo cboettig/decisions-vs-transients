@@ -7,6 +7,7 @@ output: github_document
 ```{r message = FALSE}
 library(tidyverse)
 library(patchwork)
+library(ggthemes)
 library(furrr)
 set.seed(12345)
 ```
@@ -107,7 +108,7 @@ Stochastic replicate simulations (run in parallel):
 ```{r}
 plan("multisession")
 system.time({
-  df <- future_map_dfr(1:500, function(reps) sim(may, p), .id = "reps")
+  sim_data <- future_map_dfr(1:500, function(reps) sim(may, p), .id = "reps")
 })
 
 
@@ -118,14 +119,14 @@ system.time({
 ```{r}
 p_det$N <- 3e3
 det <- sim(may,p_det) %>% mutate(reps=1)
-mean <- df %>% group_by(t) %>% summarise(x = mean(x)) %>% mutate(reps = 1)
+mean <- sim_data %>% group_by(t) %>% summarise(x = mean(x)) %>% mutate(reps = 1)
 ```
 
 
 ## Stochastic ensemble mean vs deterministic mean
 
 ```{r}
-df %>% group_by(reps) %>%
+sim_data %>% group_by(reps) %>%
   sample_n(5e2) %>%
   ggplot(aes(t, x, group=reps)) + 
   geom_line(alpha=0.05) +
@@ -145,17 +146,17 @@ library(stats)
 Extract a series with relatively long ghost:
 
 ```{r}
-means <- df %>% group_by(reps) %>% summarise(ave = mean(x), max = max(x))
+means <- sim_data %>% group_by(reps) %>% summarise(ave = mean(x), max = max(x))
 lows <- means %>% filter(ave < mean(ave) - 3*sd(ave), max > 120) %>% pull(reps)
 ```
 
 ```{r arima_forecast}
-x <- df %>% filter(reps == lows[[1]], t <= 2000) %>% pull(x) %>% as.ts() 
+x <- sim_data %>% filter(reps == lows[[1]], t <= 2000) %>% pull(x) %>% as.ts() 
 fit <- arima(x)
 y <- predict(fit, n.ahead = 1000) %>% as.data.frame()
 y <- bind_rows(data.frame(pred = x, se = 0), y)
 
-arima_forecast <- df %>% 
+arima_forecast <- sim_data %>% 
   filter(reps == lows[[1]]) %>% 
   select(t,x) %>%
   bind_cols(y)
@@ -256,21 +257,58 @@ Replicate simulations of stochastic model with parameters drawn from posteriors
 (would be great to have a `greta` method for this...)
 
 ```{r}
-a <- sample(unlist(draws, TRUE), 10)
-p$N <- 3e3
+a <- unname(sample(unlist(draws, TRUE), 100))
+p$N <- 1e3
+x <- sim_data %>% filter(reps == lows[[1]], t == 2001) %>% pull(x)
+
+p$x0 <- x[[1]]
 posterior_sims <- map_dfr(a, function(a){
   p$a <- a
   sim(may, p)
 },
-.id = "a")
+.id = "reps")
 
 ```
 
 ```{r}
+alpha <- 0.1
+training_data <- train %>% select(t,x) %>% mutate(reps="1", set = "training", alpha = 1)
+
+true_forecast <- 
+  future_map_dfr(1:100, 
+                 function(reps) sim(may, p), 
+                 .id = "reps"
+                 ) %>% 
+  mutate(t = t+2000,
+         set = "true",
+         alpha = alpha) %>% 
+  bind_rows(training_data)
+
+predicted_forecast <- posterior_sims %>% 
+    mutate(t = t+2000,
+           set = "predicted",
+           alpha = alpha)
+```
+
+
+```{r}
+bind_rows(predicted_forecast, true_forecast) %>% 
+  ggplot(aes(t,x)) +
+  geom_line(aes(group = interaction(reps, set), col = set), alpha = .05) + 
+  geom_line(data = training_data) + 
+  scale_color_solarized()
+```
+
+```{r}
+
 posterior_sims %>% 
-  mutate(a = as.numeric(a)) %>% 
-  ggplot(aes(t,x, group=a)) + 
-  geom_line(alpha = 0.05) 
+  mutate(a = as.numeric(a), 
+         t = t+2000) %>% 
+  ggplot(aes(t,x)) + 
+  geom_line(aes(group = reps), col = "blue", alpha = 0.05,
+            data = true_forecast) + 
+  geom_line(aes(group = a), alpha = 0.05, col = "red") + 
+  geom_line(data = training_set) 
 ```
 
 
