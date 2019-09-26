@@ -205,12 +205,12 @@ K <- p$K
 H <- p$H
 sigma <- p$sigma
 
-# r <- uniform(0, 1)
-# Q <- uniform(0, 10)
-#K <- uniform(0, 10)
+r <- uniform(0, 2 * p$r)
+Q <- uniform(0, 10)
+K <- uniform(0, 2*p$K)
 a <- uniform(0, 10)
-# H <- uniform(0,  2)
-#sigma <- uniform(0, 1)
+H <- uniform(0,  2*p$H)
+sigma <- uniform(0, 2 * p$sigma)
 
 # Model   (mean <-  may(x_t, p))
 mean <- x_t + r * x_t * (1 - x_t / K) - a * x_t ^ Q / (x_t ^ Q + H ^ Q)
@@ -257,9 +257,18 @@ Replicate simulations of stochastic model with parameters drawn from posteriors
 (would be great to have a `greta` method for this...)
 
 ```{r}
-a <- unname(sample(unlist(draws, TRUE), 100))
+#a <- unname(sample(unlist(draws, TRUE), 100))
+x0 <- sim_data %>% filter(reps == lows[[1]], t == 2001) %>% pull(x)
+
+posterior_samples <- 
+  bind_rows(map(draws, as_tibble)) %>% 
+  sample_n(100)
+
+posterior_samples %>%
+  mutate(N=1e3, x0 = x0) %>%
+  purrr::transpose() %>% map_dfr()
+
 p$N <- 1e3
-x <- sim_data %>% filter(reps == lows[[1]], t == 2001) %>% pull(x)
 
 p$x0 <- x[[1]]
 posterior_sims <- map_dfr(a, function(a){
@@ -300,23 +309,6 @@ bind_rows(predicted_forecast, true_forecast) %>%
   facet_wrap(~set) + 
   scale_color_solarized()
 ```
-
-```{r}
-
-posterior_sims %>% 
-  mutate(a = as.numeric(a), 
-         t = t+2000) %>% 
-  ggplot(aes(t,x)) + 
-  geom_line(aes(group = reps), col = "blue", alpha = 0.05,
-            data = true_forecast) + 
-  geom_line(aes(group = a), alpha = 0.05, col = "red") + 
-  geom_line(data = training_set) 
-```
-
-
-
-
-
 
 
 

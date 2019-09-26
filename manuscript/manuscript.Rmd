@@ -35,45 +35,6 @@ extrafont::loadfonts()
 library(tidyverse)   # plotting and data manipulation
 ```
 
-```{r}
-source("../R/ghost.R")
-```
-
-
-```{r}
-data <- vroom::vroom("../data/reps.csv.xz") %>% filter(t < 3000)
-## get tail cases for comparison
-ex <- data %>% group_by(reps) %>% summarise(ave = mean(x)) %>% arrange(ave)
-lows <- ex %>% dplyr::slice(1:10) %>% pull(reps)
-highs <- ex %>% dplyr::slice((n()-9):n()) %>% pull(reps)
-```
-
-
-
-```{r arima_forecast}
-library(stats)
-x <- data %>% filter(reps == lows[[6]], t < 2000) %>% pull(x) %>% as.ts() 
-fit <- arima(x)
-y <- predict(fit, n.ahead = 1000) %>% as.data.frame()
-y <- bind_rows(data.frame(pred = x, se = 0), y)
-arima_forecast <- data %>% filter(reps == lows[[6]]) %>% select(t,x) %>% bind_cols(y)
-```
-
-
-```{r arima_figure, message=FALSE, warning=FALSE}
-train <- arima_forecast %>% filter(t < 2000) 
-test <- arima_forecast %>% filter(t > 2000) 
-train %>%
-  ggplot(aes(t)) + 
-  geom_line(aes(y=x)) +
-  geom_line(aes(y=pred), lwd = 1, lty = 3, col = "red", data = test) + 
-  geom_ribbon(aes(y=pred, ymin=pred-se, ymax=pred+se), alpha = 0.4, fill = "red", data = test)  + 
-  geom_line(aes(y=x), data = test, lty = 2, col="blue") +
-  xlim(0,3000) + ylim(0, 1.6)+ ylab("x") + theme_minimal()
-
-
-```
-
 
 
 
