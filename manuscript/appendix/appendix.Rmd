@@ -9,7 +9,10 @@ library(tidyverse)
 library(patchwork)
 library(ggthemes)
 library(furrr)
-set.seed(12345)
+
+library(greta)
+tensorflow::use_session_with_seed(12345)
+
 ```
 
 
@@ -198,27 +201,30 @@ x_t <- wide[-n,]
 ```
 
 ```{r}
+
+# a <- 2.3
 r <- p$r
 Q <- p$Q
 K <- p$K
-# a <- 2.3
 H <- p$H
 sigma <- p$sigma
 
-r <- uniform(0, 2 * p$r)
-Q <- uniform(0, 10)
-K <- uniform(0, 2*p$K)
 a <- uniform(0, 10)
+r <- uniform(0, 2 * p$r)
+#Q <- uniform(0, 10)
+K <- uniform(0, 2*p$K)
 H <- uniform(0,  2*p$H)
 sigma <- uniform(0, 2 * p$sigma)
 
 # Model   (mean <-  may(x_t, p))
 mean <- x_t + r * x_t * (1 - x_t / K) - a * x_t ^ Q / (x_t ^ Q + H ^ Q)
 distribution(x_t1) <- normal(mean, sigma * x_t)
-m <- model(a)
+
+m <- model(a, r, K, H, sigma)
 ```
 
 ```{r }
+
 system.time({
   draws <- mcmc(m, n_samples = 1000, warmup = 3000, chains = 4, verbose = FALSE)
 })
@@ -238,7 +244,7 @@ samples <-
 ```{r}
 #Q = 5
 true <- 
-  data.frame(a = 2.3) %>%
+  as_tibble(p) %>% select(-N, -x0, -Q) %>%
   gather(variable, value)
 ```
 
@@ -264,18 +270,22 @@ posterior_samples <-
   bind_rows(map(draws, as_tibble)) %>% 
   sample_n(100)
 
-posterior_samples %>%
-  mutate(N=1e3, x0 = x0) %>%
-  purrr::transpose() %>% map_dfr()
+posterior_sims <- posterior_samples %>%
+  mutate(N=1e3, x0 = x0, Q = p$Q) %>% 
+         ## sigma = p$sigma, H = p$H, K = p$K, r = p$r) %>%
+  purrr::transpose() %>%
+  map_dfr(function(q) sim(may, q) ,.id = "reps")
+```
 
-p$N <- 1e3
+```{r}
+#q <- posterior_samples[1,] %>%  mutate(N=1e3, x0 = x0, Q = p$Q)
+#sim(may, q)
 
-p$x0 <- x[[1]]
-posterior_sims <- map_dfr(a, function(a){
-  p$a <- a
-  sim(may, p)
-},
-.id = "reps")
+#posterior_sims <- map_dfr(a, function(a){
+#  p$a <- a
+#  sim(may, p)
+#},
+#.id = "reps")
 
 ```
 
@@ -283,6 +293,8 @@ posterior_sims <- map_dfr(a, function(a){
 alpha <- 0.1
 training_data <- train %>% select(t,x) %>% mutate(reps="1") #, set = "training")
 
+p$x0 <- x0
+p$N <- 1e3
 true_forecast <- 
   future_map_dfr(1:100, 
                  function(reps) sim(may, p), 
