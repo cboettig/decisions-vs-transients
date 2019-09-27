@@ -41,6 +41,9 @@ library(tidyverse)   # plotting and data manipulation
 Transient dynamics have long been identified in the ecological systems @Hastings1994.   Ecological @Hastings2018
 
 
+Long transients may be quite common features of the dynamics of ecological systems.  What implications does this have for our ability to predict and manage them?  One of the most intuitive implications for the existence of long transients in the risk in mistaking transient behavior for stable state behavior and the consequences of managing a system under this false conclusion.  The potential for this mistake can is straightforward to demonstrate even under idealized conditions such as access to accurate, high frequency data and knowledge of the correct model structure. Decision-theoretic approaches to ecological management provide a more nuianced approach for dealing with uncertainty by explicitly considering the set of all actions available to the manager and the likely consequences of those actions over time. In this paper, I explore the ability of both passive and active adaptive management approaches to cope with the challenge of long transient dynamics.  My results underscore 
+
+
 ## Long transients when the underlying model is not known
 
 One of the more intuitive implications of the existence of long transients is the inherent risk in mistaking them for stable state dynamics.  For example, Figure \ref{armina} illustrates how a transient 
