@@ -29,6 +29,7 @@ library(ggthemes)
 library(Cairo)
 library(extrafont)
 extrafont::loadfonts()
+pal <- solarized_pal()(3)
 ```
 
 ```{r message = FALSE}
@@ -38,11 +39,255 @@ library(tidyverse)   # plotting and data manipulation
 
 
 
-Transient dynamics have long been identified in the ecological systems 
-
-
 Long transients may be quite common features of the dynamics of ecological systems [@Hastings1994; @Hastings2018].  What implications does this have for our ability to predict and manage them?  One of the most intuitive implications for the existence of long transients in the risk in mistaking transient behavior for stable state behavior and the consequences of managing a system under this false conclusion.  The potential for this mistake can is straightforward to demonstrate even under idealized conditions such as access to accurate, high frequency data and knowledge of the correct model structure. Decision-theoretic approaches to ecological management provide a more nuianced approach for dealing with uncertainty by explicitly considering the set of all actions available to the manager and the likely consequences of those actions over time. In this paper, I explore the ability of both passive and active adaptive management approaches to cope with the challenge of long transient dynamics.  My results underscore the challenge transients create for accurate model inference, but also show a potential way forward for accounting for the resulting uncertainty in a decision-theory framework. Examining the impact different prior beliefs have on adaptive management, I show how a precautionary principle emerges from the optimization.  This analysis also highlights the importance of stochasticity has for transient dynamics.
 
+
+
+
+
+```{r results="hide"}
+library(MDPtoolbox)
+library(sarsop) # remotes::install_github("boettiger-lab/sarsop")
+library(tidyverse) # for plotting
+library(mdplearning)
+
+damage <- 0.05
+control <- 1
+reward_fn <- function(x,h) - damage * x ^ 2 - control * h
+discount <- 0.98
+
+
+states <- seq(0,2, length=200)
+actions <- states
+observations <- states
+sigma_g <- 0.05
+sigma_m <- 0.0
+
+r <- 0.8
+K <- 1.53
+q <- 2
+b <- .2
+eps <- states[2]/10
+Tmax <- 100
+
+may <- function(a){  
+  function(x, h){ # May
+    # x <- pmax(x - h, 0)   # harvest then recruit   
+    x + x * r * (1 - x / K)  - a * x ^ q / (x ^ q + b ^ q) + eps - h
+  }
+}
+
+possible_a <- seq(.25, .34, by = 0.005)
+true_a <- 0.27   ## reality has just a transient.  use  0.277 for stronger ghost
+believe_a <- 0.31 ## believe there's a strong attractor
+true_i <- which.min(abs(possible_a - true_a))
+
+```
+
+
+## True model: weak ghost attractor
+
+```{r true_a}
+f <- may(true_a)
+tibble(x = states[1:120],
+       f = f(x,0) - x) %>%
+  ggplot(aes(x, f)) + 
+  geom_line(col=pal[1], lwd=2) +
+  geom_hline(aes(yintercept = 0), lwd=2, lty=2) + 
+  ylim(-0.06, 0.06)
+```  
+
+---
+
+## Incorrect belief of bistable system
+
+```{r a29}
+f <- may(0.29)
+tibble(x = states[1:120],
+       f = f(x,0) - x) %>%
+  ggplot(aes(x, f)) + 
+  geom_line(col=pal[1], lwd=2) +
+  geom_hline(aes(yintercept = 0), lwd=2, lty=2) + 
+  ylim(c(-0.04, 0.04))
+```
+
+---
+
+## Incorrect belief of stronger bistable system
+
+```{r a31}
+f <- may(believe_a)
+tibble(x = states[1:120],
+       f = f(x,0) - x) %>%
+  ggplot(aes(x, f)) + 
+  geom_line(col=pal[1], lwd=2) +
+  geom_hline(aes(yintercept = 0), lwd=2, lty=2) + 
+  ylim(-0.03, 0.03)
+```
+
+
+
+---
+
+
+```{r results="hide"}
+m_true <- fisheries_matrices(states, actions, observations, reward_fn, 
+                        may(true_a), sigma_g, sigma_m, noise = "lognormal")
+
+
+m <- fisheries_matrices(states, actions, observations, reward_fn, 
+                        may(believe_a), sigma_g, sigma_m, noise = "lognormal")
+soln <- mdp_value_iteration(m$transition, m$reward, discount)
+opt_soln <- mdp_value_iteration(m_true$transition, m_true$reward, discount)
+
+```
+
+## Simulation under *no intervention*
+
+```{r no_intervention}
+x0 <- which.min(abs(states - 0.1))
+no_policy <- numeric(length(states)) + 1
+
+df <- mdp_planning(m_true$transition, m_true$reward, discount, model_prior = c(1), 
+                   policy = no_policy, x0 = x0, Tmax = 100)
+```
+
+```{r}
+df %>% mutate(state = states[state], action = 5*actions[action]) %>% 
+  select(state, action, time) %>% 
+  gather(series, state, -time) %>%
+  ggplot(aes(time, state, col=series)) +
+  geom_line(lwd=2) + 
+  ylim(0,1.3)
+```
+
+
+
+---
+
+## Mistaken ghost for alternate stable state
+
+```{r mistaken_ghost}
+x0 <- which.min(abs(states - 0.1))
+no_policy <- numeric(length(states)) + 1
+
+df <- mdp_planning(m_true$transition, m_true$reward, discount, model_prior = c(1), 
+                   policy = soln$policy, x0 = x0, Tmax = 100)
+
+df %>%
+  mutate(state = states[state], action = 5*actions[action]) %>% 
+  select(state, action, time) %>% 
+  gather(series, state, -time) %>%
+  ggplot(aes(time, state, col=series)) +
+  geom_line(lwd=2) + 
+  ylim(0,1.3)
+```
+
+
+
+
+
+## Prior beliefs
+
+```{r priors}
+prior <- dnorm(possible_a, 0.295, 0.005)
+prior <- prior / sum(prior)
+data.frame(a = possible_a, probability = prior) %>%
+  ggplot(aes(a,prior)) + 
+  geom_bar(stat="identity", fill=pal[1], alpha=0.6) +
+  geom_vline(aes(xintercept = true_a), lwd=3, lty=2, col=pal[1]) + 
+  ylim(0, 0.6)
+```
+
+---
+
+## Learning late
+
+
+
+```{r learning}
+sim <- readRDS("../notebook/sim-ghost-learning.Rds")
+states <- seq(0,2, length=140)
+actions <- states
+Tmax <- 100
+
+ sim$posterior %>% 
+  data.frame(time = 1:Tmax) %>%
+  filter(time %in% seq(1,Tmax, by = 10), time < 50) %>%
+  gather(param, probability, -time, factor_key =TRUE) %>% 
+  mutate(param = as.numeric(param)) %>% 
+  ggplot(aes(x = param, y = probability, group = time, alpha = time)) + 
+  geom_bar(stat="identity", position = "identity", show.legend = FALSE, fill=pal[1]) 
+```
+
+---
+
+## Outcome
+
+```{r}
+ sim$df %>% 
+   mutate(state = states[state], action = 5*actions[action]) %>% 
+  select(-value, -obs) %>% 
+  gather(series, state, -time) %>% 
+  ggplot(aes(time, state, color = series)) +
+  geom_line(lwd=2) +
+  ylim(0,1.3) +
+  ylab("state / action")
+```
+
+
+---
+
+## More agnostic prior beliefs
+
+```{r priors_wide}
+prior <- dnorm(possible_a, 0.3, 0.05)
+prior <- prior / sum(prior)
+data.frame(a = possible_a, probability = prior) %>%
+  ggplot(aes(a,prior)) + geom_bar(stat="identity", fill=pal[1], alpha=0.5) +
+  geom_vline(aes(xintercept = true_a), lwd=3, lty=2, col=pal[2]) +
+  ylim(0,.3)
+```
+
+---
+
+
+```{r less-learning}
+sim2 <- readRDS("../notebook/sim-ghost-learning-2.Rds")
+states <- seq(0,2, length=200)
+actions <- states
+Tmax <- 100
+
+ sim2$posterior %>% 
+  data.frame(time = 1:Tmax) %>%
+  filter(time %in% seq(1,Tmax, by = 10), time < 50) %>%
+  gather(param, probability, -time, factor_key =TRUE) %>% 
+  mutate(param = as.numeric(param)) %>% 
+  ggplot(aes(x = param, y = probability, group = time, alpha = time)) + 
+  geom_bar(stat="identity", position = "identity", show.legend = FALSE, fill=pal[1]) + 
+   ylim(0,0.3)
+```
+
+---
+
+## Less learning, more caution
+
+
+```{r}
+ sim2$df %>% 
+   mutate(state = states[state], action = 5*actions[action]) %>% 
+  select(-value, -obs) %>% 
+  gather(series, state, -time) %>% 
+  ggplot(aes(time, state, color = series)) +
+  geom_line(lwd=2) + 
+  ylim(0,1.3) +
+  ylab("state / action")
+```
+
+
+
+```{r}
+```
 
 ## Long transients when the underlying model is not known
 
