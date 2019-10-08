@@ -19,35 +19,44 @@ library(truncnorm)
 - also experience damage costs proportional to pest abundance
 
 ```{r}
+#damage <- 0.3
+#control <- 100
+#discount <- 0.99
+
 damage <- 0.05
 control <- 1
 discount <- 0.98
 
-n_s <- 200
-states <- seq(0,120, length=n_s)
+n_s <- 110
+states <- seq(0,110, length=n_s)
 actions <- states
 
-p <- list(r = .8, K = 153, q = 2, b = 20, sigma = .02, a=2.3,
-          N = 3e3, x0 = 20)
-#eps <- states[2]/10
+p <- list(r = .8, K = 153, q = 2, b = 20, sigma = .02, a=2.3, x0 = 20)
+eps <- states[2] / 10
 
 may <- function(a){  
   function(x, h = 0){ # May
-    x + x * p$r * (1 - x / p$K)  - a * x ^ p$q / (x ^ p$q + p$b ^ p$q) - h
+    pmax(
+      x + x * p$r * (1 - x / p$K)  - a * x ^ p$q / (x ^ p$q + p$b ^ p$q) + eps - h,  
+      0)
   }
 }
 
-reward_fn <- function(x,h) - damage * (x / max(states)) ^ 2 - control * h / max(actions)
+reward_fn <- function(x,h) - damage * (x / 100) - control * h / 100
+
+
+#reward_fn <- function(x,h) - damage * (x / max(states)) - control * h / max(actions) * x / max(states)
 
 ```
 
-Range of possible a that covers tipping in both directions:
+Range of possible a that covers tipping in both directions.  Belief is in a stable system while the reality is a transient (smaller `a`).
 
 ```{r}
 
 true_a <- 27.4      ### 21.5
 believe_a <- 29 # 28.5   ### 22.5
-possible_a <- seq(2*true_a - believe_a, 2*believe_a - true_a, by = 0.1)
+
+possible_a <- seq(2*true_a - believe_a, 2*believe_a - true_a, by = 0.2)
 true_i <- which.min(abs(possible_a - true_a))
 ```
 
@@ -125,7 +134,7 @@ Tmax <- 200
 
 ```{r}
 X <- numeric(length(states))
-X[x0] <- 1
+X[2] <- 1
 
 prob_dynamics <- function(M, X, Tmax){
   probability <- t(M) %^% Tmax %*% X 
@@ -200,67 +209,32 @@ examples <- bind_rows(switches = switches,
 ```
 
 
------
-
-
-# Greta 
-
-```{r}
-library(greta)
-```
-
-
-```{r}
-estimate_posterior <- function(df){
-  X <- df$state
-  # Reshape time-series data into ordered pairs
-  n <- length(X)
-  x_t1 <- X[-1]
-  x_t <- X[-n] 
-  
-  # Prior
-  a <- uniform(min(possible_a), max(possible_a))
-  
-  # Model definition
-  mean <- x_t + p$r * x_t * (1 - x_t / p$K) - a * x_t ^ p$q / (x_t ^ p$q + p$b ^ p$q)
-  distribution(x_t1) <- normal(mean, p$sigma * x_t)
-  m <- model(a)
-  
-  # MCMC
-  system.time({
-    draws <- mcmc(m, n_samples = 1000, warmup = 3000, chains = 4, verbose = FALSE)
-  })
-  
-  
-  ## tidy
-  samples <-  
-    map_dfr(draws, function(x) data.frame(x, t = 1:dim(x)[1]), .id = "chain") %>% 
-    gather(variable, value, -t, -chain)
-}
-```
-
-```{r}
-samples <- examples %>% group_by(series) %>% group_modify(~estimate_posterior(.x))
-```
-
-
-```{r, warning=FALSE, message=FALSE}
-true <- tribble(~ value, ~ a,
-                believe_a, "attractor",
-                believe_a,  "attractor",
-                true_a,     "ghost")
-
-samples %>% 
-  ggplot() + 
-  geom_histogram(aes(value, fill=series), stat="density", alpha = 0.8) + 
-  geom_vline(data = true, aes(xintercept = value, lty=a), col="black", lwd = 1) + 
-  facet_wrap(~variable, scales = "free")
-```
 
 
 ----
 
 # Learning
+
+```{r}
+x0 <- which.min(abs(states - 23))
+```
+
+```{r}
+no_policy <- numeric(length(states)) + 1
+
+#set.seed(12345678)
+set.seed(12345)
+
+df <- mdp_planning(m_true, reward, discount, model_prior = c(1), 
+                   policy = no_policy, x0 = x0, Tmax = Tmax)
+
+df %>% mutate(state = states[state], action = actions[action]) %>% 
+  ggplot(aes(time, state)) + geom_point()+geom_path() + 
+  geom_line(aes(time, action), col="blue")
+```
+
+
+
 
 ```{r}
 reward <- array(dim=c(length(states), length(actions)))
@@ -273,28 +247,9 @@ for(i in 1:length(states)){
 
 
 
-
 ```{r}
-no_policy <- numeric(length(states)) + 1
-x0 <- which.min(abs(states - 25))
-
-set.seed(12345678)
-df <- mdp_planning(m_true, reward, discount, model_prior = c(1), 
-                   policy = no_policy, x0 = x0, Tmax = Tmax)
-
-df %>% mutate(state = states[state], action = actions[action]) %>% 
-  ggplot(aes(time, state)) + geom_point()+geom_path() + 
-  geom_line(aes(time, action), col="blue")
-```
-
-
-
-
-
-
-```{r}
-soln <- mdp_value_iteration(m_belief, reward, discount)
-opt_soln <- mdp_value_iteration(m_true, reward, discount)
+belief_p <- mdp_value_iteration(m_belief, reward, discount, epsilon = 1e-4)
+true_p <- mdp_value_iteration(m_true, reward, discount, epsilon = 1e-5)
 #soln <- mdplearning::mdp_compute_policy(list(m_belief), reward, discount)
 #opt_soln <- mdplearning::mdp_compute_policy(list(m_true), reward, discount)
 ```
@@ -304,8 +259,8 @@ Policy based on the belief (i.e. that system is bi-stable)
 
 ```{r}
 tibble(state = states,
-       belief = actions[soln$policy],
-       ideal =  actions[opt_soln$policy]) %>%
+       belief = actions[belief_p$policy],
+       ideal =  actions[true_p$policy]) %>%
   pivot_longer(c(belief, ideal), 
                names_to="model",
                values_to = "action") %>%
@@ -322,7 +277,7 @@ Result experienced by incorrect belief:  initial in-action followed by need for 
 ```{r}
 set.seed(12345)
 df <- mdp_planning(m_true, reward, discount, model_prior = c(1), 
-                   policy = soln$policy, x0 = x0, Tmax = 200)
+                   policy = belief_p$policy, x0 = x0, Tmax = 1000)
 
 df %>% mutate(state = states[state], action = actions[action]) %>% 
   ggplot(aes(time, state)) + geom_point()+geom_path() + 
@@ -333,9 +288,9 @@ df %>% mutate(state = states[state], action = actions[action]) %>%
 Expected result based on the belief: stable low level is acceptable, so no action is required:
 
 ```{r}
-
-df <- mdp_planning(m_belief, m$reward, discount, model_prior = c(1), 
-                   policy = soln$policy, x0 = x0, Tmax = 100)
+set.seed(12345)
+df <- mdp_planning(m_belief, reward, discount, model_prior = c(1), 
+                   policy = belief_p$policy, x0 = 26, Tmax = 1000)
 
 df %>% mutate(state = states[state], action = actions[action]) %>% 
   ggplot(aes(time, state)) + geom_point()+geom_path() + 
@@ -347,7 +302,7 @@ Optimal strategy knowing this is just a transient (will depend on discount rate)
 ```{r}
 
 df <- mdp_planning(m_true, reward, discount, model_prior = c(1), 
-                   policy = opt_soln$policy, x0 = x0, Tmax = 200)
+                   policy = true_p$policy, x0 = x0, Tmax = 1000)
 
 df %>% mutate(state = states[state], action = actions[action]) %>% 
   ggplot(aes(time, state)) + geom_point()+geom_path() + 
@@ -356,14 +311,11 @@ df %>% mutate(state = states[state], action = actions[action]) %>%
 
 
 
------
 
 
+----
 
-
-
-
-
+## Active Learning
 
 
 ```{r}
@@ -399,19 +351,27 @@ data.frame(a = possible_a, probability = prior) %>%
 
 
 
+
 ```{r}
-sim <- mdp_learning(transition, reward, discount, 
-                    x0 = x0, 
-                    Tmax = Tmax, 
-                    true_transition = transition[[true_i]],
-                    model_prior = prior,
-                    type = "value iteration", 
-                    epsilon = 1e-2)
+if(!file.exists("learning_sim.tsv.gz")){ # Cache the slow step
+
+  learning_sim <- mdp_learning(transition, reward, discount, 
+                      x0 = x0, 
+                      Tmax = Tmax, 
+                      true_transition = transition[[true_i]],
+                      model_prior = prior,
+                      type = "value iteration", 
+                      epsilon = 1e-2)
+  readr::write_tsv(learning_sim, "learning_sim.tsv.gz")
+  
+} else {
+  learning_sim <- readr::read_tsv("learning_sim.tsv.gz")
+}
 ```
 
 
 ```{r}
- sim$df %>% 
+ learning_sim$df %>% 
   select(-value) %>% 
   gather(series, state, -time) %>% 
   ggplot(aes(time, states[state], color = series)) + geom_line()
@@ -420,7 +380,7 @@ sim <- mdp_learning(transition, reward, discount,
 
 
 ```{r}
- sim$posterior %>% 
+ learning_sim$posterior %>% 
   data.frame(time = 1:Tmax) %>%
   filter(time %in% seq(1,Tmax, by = 5)) %>%
   gather(param, probability, -time, factor_key =TRUE) %>% 
@@ -430,13 +390,89 @@ sim <- mdp_learning(transition, reward, discount,
 ```
 
 
+```{r}
+```
 
 
 
 
 
+
+
+
+
+-----
+
+
+# Greta 
+
+```{r}
+library(greta)
+```
+
+
+```{r}
+estimate_posterior <- function(df){
+  X <- df$state
+  # Reshape time-series data into ordered pairs
+  n <- length(X)
+  x_t1 <- X[-1]
+  x_t <- X[-n] 
+  
+  # Prior
+  a <- uniform(min(possible_a), max(possible_a))
+  
+  # Model definition
+  mean <- x_t + p$r * x_t * (1 - x_t / p$K) - a * x_t ^ p$q / (x_t ^ p$q + p$b ^ p$q)
+  distribution(x_t1) <- normal(mean, p$sigma * x_t)
+  m <- model(a)
+
+  # MCMC
+  system.time({
+    draws <- mcmc(m, n_samples = 1000, warmup = 3000, chains = 4, verbose = FALSE)
+  })
+  
+  
+  ## tidy
+  samples <-  
+    map_dfr(draws, function(x) data.frame(x, t = 1:dim(x)[1]), .id = "chain") %>% 
+    gather(variable, value, -t, -chain)
+}
+```
+
+```{r mcmc, cache=TRUE}
+if(!file.exists("samples.tsv.gz")){ # Manually cache the slow step
+  
+samples <- examples %>% 
+  group_by(series) %>% 
+  group_modify(~estimate_posterior(.x))
+
+readr::write_tsv(samples, "samples.tsv.gz")
+
+} else {
+  samples <- readr::read_tsv("samples.tsv.gz")
+}
+```
+
+
+```{r, warning=FALSE, message=FALSE}
+true <- tribble(~ value, ~ a,
+                believe_a, "attractor",
+                believe_a,  "attractor",
+                true_a,     "ghost")
+
+samples %>% 
+  ggplot() + 
+  geom_histogram(aes(value, fill=series), stat="density", alpha = 0.8) + 
+  geom_vline(data = true, aes(xintercept = value, lty=a), col="black", lwd = 1) + 
+  facet_wrap(~variable, scales = "free")
+```
 
 
 
 ```{r}
 ```
+
+
+
+
