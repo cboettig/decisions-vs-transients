@@ -25,24 +25,25 @@ library(truncnorm)
 
 damage <- 0.05
 control <- 1
-discount <- 0.98
+discount <- 0.999
 
-n_s <- 110
-states <- seq(0,110, length=n_s)
-actions <- states
+n_s <- 121
+states <- seq(0, 120, length = n_s)
+actions <- seq(0, 120, length = n_s)
 
 p <- list(r = .8, K = 153, q = 2, b = 20, sigma = .02, a=2.3, x0 = 20)
-eps <- states[2] / 10
 
 may <- function(a){  
   function(x, h = 0){ # May
+    y <- x - h
     pmax(
-      x + x * p$r * (1 - x / p$K)  - a * x ^ p$q / (x ^ p$q + p$b ^ p$q) + eps - h,  
+      ## controlling h is controlling the bifurcation point directly...
+      y + y * p$r * (1 - y / p$K)  - a * y ^ p$q / (y ^ p$q + p$b ^ p$q),  
       0)
   }
 }
 
-reward_fn <- function(x,h) - damage * (x / 100) - control * h / 100
+reward_fn <- function(x,h) - damage * (x / 100) ^ 2 - control * (h / 100)
 
 
 #reward_fn <- function(x,h) - damage * (x / max(states)) - control * h / max(actions) * x / max(states)
@@ -53,7 +54,7 @@ Range of possible a that covers tipping in both directions.  Belief is in a stab
 
 ```{r}
 
-true_a <- 27.4      ### 21.5
+true_a <- 27.2      ### 21.5
 believe_a <- 29 # 28.5   ### 22.5
 
 possible_a <- seq(2*true_a - believe_a, 2*believe_a - true_a, by = 0.2)
@@ -96,7 +97,7 @@ transition_matrix <- function(states, actions, f, sigma){
     for(i in 1:n_a){
       for (k in 1:n_s) {
           nextpop <- f(states[k], actions[i])
-          if (nextpop < 0) {
+          if (nextpop <= 0) {
           #if(which.min(abs(states - nextpop)) > 1) {
              x  <- c(1, rep(0, n_s - 1))
           } else {
@@ -115,21 +116,12 @@ transition_matrix <- function(states, actions, f, sigma){
 }
 ```
 
-
-
 ```{r}
 m_true <- transition_matrix(states, actions, may(true_a), p$sigma)
 m_belief <- transition_matrix(states, actions, may(believe_a), p$sigma)
 ```
 
 
-"simulate" without any actions
-
-
-```{r}
-x0 <- which.min(abs(states - p$x0))
-Tmax <- 200
-```
 
 
 ```{r}
@@ -141,10 +133,197 @@ prob_dynamics <- function(M, X, Tmax){
   data.frame(state = states, probability)
 }
   
-
-prob_dynamics(m_true[,,1], X, Tmax) %>% 
-  ggplot(aes(state,probability))  + geom_point() # + geom_bar(stat="identity")
+Tmax <- 500
+true_distrib <- prob_dynamics(m_true[,,2], X, Tmax)
+believe_distrib <- prob_dynamics(m_belief[,,2], X, Tmax)
+bind_rows(true = true_distrib, believe = believe_distrib, .id = "model") %>% 
+  ggplot(aes(state,probability, col=model))  + geom_line(alpha=0.5) # + geom_bar(stat="identity")
 ```
+
+----
+
+# Learning
+
+```{r}
+x0 <- which.min(abs(states - 25))
+```
+
+
+```{r}
+reward <- array(dim=c(length(states), length(actions)))
+for(i in 1:length(states)){
+  for(j in 1:length(actions)){
+    reward[i,j] <- reward_fn(states[i], actions[j])
+  }
+}
+```
+
+
+
+```{r}
+belief_p <- mdp_value_iteration(m_belief, reward, discount, epsilon = 1e-4)
+true_p <- mdp_value_iteration(m_true, reward, discount, epsilon = 1e-5)
+#soln <- mdplearning::mdp_compute_policy(list(m_belief), reward, discount)
+#opt_soln <- mdplearning::mdp_compute_policy(list(m_true), reward, discount)
+```
+
+
+Policy based on the belief (i.e. that system is bi-stable)
+
+```{r}
+tibble(state = states,
+       belief = actions[belief_p$policy],
+       ideal =  actions[true_p$policy]) %>%
+  pivot_longer(c(belief, ideal), 
+               names_to="model",
+               values_to = "action") %>%
+  ggplot(aes(state,action, color = model)) + geom_point(alpha=0.5) 
+```
+
+
+
+
+
+Result experienced by incorrect belief:  initial in-action followed by need for continued maintenance to prevent high-level outbreak:
+
+
+```{r}
+set.seed(12345)
+df <- mdp_planning(m_true, reward, discount, model_prior = c(1), 
+                   policy = belief_p$policy, x0 = x0, Tmax = 100)
+df %>% mutate(state = states[state], action = actions[action]) %>% 
+  ggplot(aes(time, state)) + geom_point()+geom_path() + 
+  geom_line(aes(time, action), col="blue")
+```
+
+
+Expected result based on the belief: stable low level is acceptable, so no action is required:
+
+```{r}
+set.seed(12345)
+df <- mdp_planning(m_belief, reward, discount, model_prior = c(1), 
+                   policy = belief_p$policy, x0 = x0, Tmax = 1000)
+
+df %>% mutate(state = states[state], action = actions[action]) %>% 
+  ggplot(aes(time, state)) + geom_point()+geom_path() + 
+  geom_line(aes(time, action), col="blue")
+```
+
+Optimal strategy knowing this is just a transient (will depend on discount rate):
+
+```{r}
+df <- mdp_planning(m_true, reward, discount, model_prior = c(1), 
+                   policy = true_p$policy, x0 = x0, Tmax = 1000)
+
+df %>% 
+  mutate(state = states[state], action = actions[action]) %>% 
+  ggplot(aes(time, state)) + 
+  geom_point(alpha=0.5)  + 
+  geom_line(aes(time, action), col="blue")
+```
+
+
+
+
+
+----
+
+## Active Learning
+
+
+```{r}
+
+models <- map(possible_a, function(a){
+  f <- may(a)
+ transition_matrix(states, actions, f, p$sigma)
+})
+  
+```
+
+```{r}
+transition <- models
+```
+
+
+
+## a near ghost
+
+```{r}
+wd <- sd(possible_a)
+prior <- dnorm(possible_a, believe_a, wd/2)
+prior <- prior / sum(prior)
+```
+
+```{r}
+data.frame(a = possible_a, probability = prior) %>%
+  ggplot(aes(a,prior)) + geom_bar(stat="identity") +
+  geom_vline(aes(xintercept = true_a), col="red", lwd=1, lty=2) + 
+  geom_vline(aes(xintercept = believe_a), col="blue", lwd=1, lty=2) 
+```
+
+
+
+
+
+```{r}
+mdp_learning_ <- memoise::memoise(mdp_learning)
+  learning_sim <- mdp_learning_(transition, reward, discount, 
+                      x0 = x0, 
+                      Tmax = Tmax, 
+                      true_transition = transition[[true_i]],
+                      model_prior = prior,
+                      type = "value iteration", 
+                      epsilon = 1e-2)
+
+```
+
+
+```{r}
+ learning_sim$df %>% 
+  select(-value) %>% 
+  gather(series, state, -time) %>% 
+  ggplot(aes(time, states[state], color = series)) + geom_line()
+```
+
+
+
+```{r}
+ learning_sim$posterior %>% 
+  data.frame(time = 1:Tmax) %>%
+  filter(time %in% seq(1,Tmax, by = 5)) %>%
+  gather(param, probability, -time, factor_key =TRUE) %>% 
+  mutate(param = as.numeric(param)) %>% 
+  ggplot(aes(param, probability, group = time, alpha = time)) + 
+  geom_line()
+```
+
+
+```{r}
+```
+
+
+
+
+
+
+
+
+
+-----
+
+# Simulations for Gretas
+
+
+
+
+"simulate" without any actions
+
+
+```{r}
+x0 <- which.min(abs(states - p$x0))
+Tmax <- 200
+```
+
 
 
 ```{r}
@@ -211,200 +390,13 @@ examples <- bind_rows(switches = switches,
 
 
 
-----
-
-# Learning
-
-```{r}
-x0 <- which.min(abs(states - 23))
-```
-
-```{r}
-no_policy <- numeric(length(states)) + 1
-
-#set.seed(12345678)
-set.seed(12345)
-
-df <- mdp_planning(m_true, reward, discount, model_prior = c(1), 
-                   policy = no_policy, x0 = x0, Tmax = Tmax)
-
-df %>% mutate(state = states[state], action = actions[action]) %>% 
-  ggplot(aes(time, state)) + geom_point()+geom_path() + 
-  geom_line(aes(time, action), col="blue")
-```
-
-
-
-
-```{r}
-reward <- array(dim=c(length(states), length(actions)))
-for(i in 1:length(states)){
-  for(j in 1:length(actions)){
-    reward[i,j] <- reward_fn(states[i], actions[j])
-  }
-}
-```
-
-
-
-```{r}
-belief_p <- mdp_value_iteration(m_belief, reward, discount, epsilon = 1e-4)
-true_p <- mdp_value_iteration(m_true, reward, discount, epsilon = 1e-5)
-#soln <- mdplearning::mdp_compute_policy(list(m_belief), reward, discount)
-#opt_soln <- mdplearning::mdp_compute_policy(list(m_true), reward, discount)
-```
-
-
-Policy based on the belief (i.e. that system is bi-stable)
-
-```{r}
-tibble(state = states,
-       belief = actions[belief_p$policy],
-       ideal =  actions[true_p$policy]) %>%
-  pivot_longer(c(belief, ideal), 
-               names_to="model",
-               values_to = "action") %>%
-  ggplot(aes(state,action, color = model)) + geom_point() 
-```
-
-
-
-
-
-Result experienced by incorrect belief:  initial in-action followed by need for continued maintenance to prevent high-level outbreak:
-
-
-```{r}
-set.seed(12345)
-df <- mdp_planning(m_true, reward, discount, model_prior = c(1), 
-                   policy = belief_p$policy, x0 = x0, Tmax = 1000)
-
-df %>% mutate(state = states[state], action = actions[action]) %>% 
-  ggplot(aes(time, state)) + geom_point()+geom_path() + 
-  geom_line(aes(time, action), col="blue")
-```
-
-
-Expected result based on the belief: stable low level is acceptable, so no action is required:
-
-```{r}
-set.seed(12345)
-df <- mdp_planning(m_belief, reward, discount, model_prior = c(1), 
-                   policy = belief_p$policy, x0 = 26, Tmax = 1000)
-
-df %>% mutate(state = states[state], action = actions[action]) %>% 
-  ggplot(aes(time, state)) + geom_point()+geom_path() + 
-  geom_line(aes(time, action), col="blue")
-```
-
-Optimal strategy knowing this is just a transient (will depend on discount rate):
-
-```{r}
-
-df <- mdp_planning(m_true, reward, discount, model_prior = c(1), 
-                   policy = true_p$policy, x0 = x0, Tmax = 1000)
-
-df %>% mutate(state = states[state], action = actions[action]) %>% 
-  ggplot(aes(time, state)) + geom_point()+geom_path() + 
-  geom_line(aes(time, action), col="blue")
-```
-
-
-
-
-
-----
-
-## Active Learning
-
-
-```{r}
-
-models <- map(possible_a, function(a){
-  f <- may(a)
- transition_matrix(states, actions, f, p$sigma)
-})
-  
-```
-
-```{r}
-transition <- models
-```
-
-
-
-## a near ghost
-
-```{r}
-wd <- sd(possible_a)
-prior <- dnorm(possible_a, believe_a, wd/2)
-prior <- prior / sum(prior)
-```
-
-```{r}
-data.frame(a = possible_a, probability = prior) %>%
-  ggplot(aes(a,prior)) + geom_bar(stat="identity") +
-  geom_vline(aes(xintercept = true_a), col="red", lwd=1, lty=2) + 
-  geom_vline(aes(xintercept = believe_a), col="blue", lwd=1, lty=2) 
-```
-
-
-
-
-
-```{r}
-if(!file.exists("learning_sim.tsv.gz")){ # Cache the slow step
-
-  learning_sim <- mdp_learning(transition, reward, discount, 
-                      x0 = x0, 
-                      Tmax = Tmax, 
-                      true_transition = transition[[true_i]],
-                      model_prior = prior,
-                      type = "value iteration", 
-                      epsilon = 1e-2)
-  readr::write_tsv(learning_sim, "learning_sim.tsv.gz")
-  
-} else {
-  learning_sim <- readr::read_tsv("learning_sim.tsv.gz")
-}
-```
-
-
-```{r}
- learning_sim$df %>% 
-  select(-value) %>% 
-  gather(series, state, -time) %>% 
-  ggplot(aes(time, states[state], color = series)) + geom_line()
-```
-
-
-
-```{r}
- learning_sim$posterior %>% 
-  data.frame(time = 1:Tmax) %>%
-  filter(time %in% seq(1,Tmax, by = 5)) %>%
-  gather(param, probability, -time, factor_key =TRUE) %>% 
-  mutate(param = as.numeric(param)) %>% 
-  ggplot(aes(param, probability, group = time, alpha = time)) + 
-  geom_line()
-```
-
-
-```{r}
-```
-
-
-
-
-
-
-
-
-
------
-
-
 # Greta 
+
+
+
+
+
+
 
 ```{r}
 library(greta)
