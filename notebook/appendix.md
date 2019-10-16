@@ -1,24 +1,21 @@
----
-output: github_document
----
 
-
-```{r setup, message=FALSE}
+``` r
 knitr::opts_chunk$set(warning=FALSE, message=FALSE)
 library(tidyverse) 
 library(MDPtoolbox)
 library(mdplearning)
 library(expm)
 library(truncnorm)
-
 ```
 
 # Outbreak model
 
-- 'harvest' term corresponds to removal of pest, with associated cost
-- also experience damage costs proportional to pest abundance
+  - ‘harvest’ term corresponds to removal of pest, with associated cost
+  - also experience damage costs proportional to pest abundance
 
-```{r}
+<!-- end list -->
+
+``` r
 #damage <- 0.3
 #control <- 100
 #discount <- 0.99
@@ -47,13 +44,12 @@ reward_fn <- function(x,h) - damage * (x / 100) ^ 2 - control * (h / 100)
 
 
 #reward_fn <- function(x,h) - damage * (x / max(states)) - control * h / max(actions) * x / max(states)
-
 ```
 
-Range of possible a that covers tipping in both directions.  Belief is in a stable system while the reality is a transient (smaller `a`).
+Range of possible a that covers tipping in both directions. Belief is in
+a stable system while the reality is a transient (smaller `a`).
 
-```{r}
-
+``` r
 true_a <- 27.4      ### 21.5
 believe_a <- 28.5 # 28.5   ### 22.5
 
@@ -61,8 +57,7 @@ possible_a <- seq(2*true_a - believe_a, 2*believe_a - true_a, by = 0.2)
 true_i <- which.min(abs(possible_a - true_a))
 ```
 
-```{r}
-
+``` r
 ## True a: The Ghost Attractor
 names(possible_a) <- possible_a
 df <- map_dfr(possible_a, 
@@ -83,13 +78,11 @@ df %>%
     geom_line(aes(lty = group), data = df %>% filter(a == true_a | a == believe_a), 
               lwd = 1, show.legend = FALSE) +
     geom_hline(aes(yintercept = 0)) 
-
 ```
 
+![](appendix_files/figure-gfm/unnamed-chunk-3-1.png)<!-- -->
 
-
-```{r}
-
+``` r
 transition_matrix <- function(states, actions, f, sigma){
     n_s <- length(states)
     n_a <- length(actions)
@@ -116,15 +109,12 @@ transition_matrix <- function(states, actions, f, sigma){
 }
 ```
 
-```{r}
+``` r
 m_true <- transition_matrix(states, actions, may(true_a), p$sigma)
 m_belief <- transition_matrix(states, actions, may(believe_a), p$sigma)
 ```
 
-
-
-
-```{r}
+``` r
 X <- numeric(length(states))
 X[2] <- 1
 
@@ -140,16 +130,17 @@ bind_rows(true = true_distrib, believe = believe_distrib, .id = "model") %>%
   ggplot(aes(state,probability, col=model))  + geom_line(alpha=0.5) # + geom_bar(stat="identity")
 ```
 
-----
+![](appendix_files/figure-gfm/unnamed-chunk-6-1.png)<!-- -->
+
+-----
 
 # Learning
 
-```{r}
+``` r
 x0 <- which.min(abs(states - 25))
 ```
 
-
-```{r}
+``` r
 reward <- array(dim=c(length(states), length(actions)))
 for(i in 1:length(states)){
   for(j in 1:length(actions)){
@@ -158,19 +149,26 @@ for(i in 1:length(states)){
 }
 ```
 
-
-
-```{r}
+``` r
 belief_p <- mdp_value_iteration(m_belief, reward, discount, epsilon = 1e-4)
+```
+
+    ## [1] "MDP Toolbox: iterations stopped, epsilon-optimal policy found"
+
+``` r
 true_p <- mdp_value_iteration(m_true, reward, discount, epsilon = 1e-5)
+```
+
+    ## [1] "MDP Toolbox: iterations stopped, epsilon-optimal policy found"
+
+``` r
 #soln <- mdplearning::mdp_compute_policy(list(m_belief), reward, discount)
 #opt_soln <- mdplearning::mdp_compute_policy(list(m_true), reward, discount)
 ```
 
+Policy based on the belief (i.e. that system is bi-stable)
 
-Policy based on the belief (i.e. that system is bi-stable)
-
-```{r}
+``` r
 tibble(state = states,
        belief = actions[belief_p$policy],
        ideal =  actions[true_p$policy]) %>%
@@ -180,14 +178,12 @@ tibble(state = states,
   ggplot(aes(state,action, color = model)) + geom_point(alpha=0.5) 
 ```
 
+![](appendix_files/figure-gfm/unnamed-chunk-10-1.png)<!-- -->
 
+Result experienced by incorrect belief: initial in-action followed by
+need for continued maintenance to prevent high-level outbreak:
 
-
-
-Result experienced by incorrect belief:  initial in-action followed by need for continued maintenance to prevent high-level outbreak:
-
-
-```{r}
+``` r
 set.seed(12345)
 df <- mdp_planning(m_true, reward, discount, model_prior = c(1), 
                    policy = belief_p$policy, x0 = x0, Tmax = 1000)
@@ -196,10 +192,12 @@ df %>% mutate(state = states[state], action = actions[action]) %>%
   geom_line(aes(time, action), col="blue")
 ```
 
+![](appendix_files/figure-gfm/unnamed-chunk-11-1.png)<!-- -->
 
-Expected result based on the belief: stable low level is acceptable, so no action is required:
+Expected result based on the belief: stable low level is acceptable, so
+no action is required:
 
-```{r}
+``` r
 set.seed(12345)
 df <- mdp_planning(m_belief, reward, discount, model_prior = c(1), 
                    policy = belief_p$policy, x0 = x0, Tmax = 1000)
@@ -209,9 +207,12 @@ df %>% mutate(state = states[state], action = actions[action]) %>%
   geom_line(aes(time, action), col="blue")
 ```
 
-Optimal strategy knowing this is just a transient (will depend on discount rate):
+![](appendix_files/figure-gfm/unnamed-chunk-12-1.png)<!-- -->
 
-```{r}
+Optimal strategy knowing this is just a transient (will depend on
+discount rate):
+
+``` r
 df <- mdp_planning(m_true, reward, discount, model_prior = c(1), 
                    policy = true_p$policy, x0 = x0, Tmax = 1000)
 
@@ -222,50 +223,41 @@ df %>%
   geom_line(aes(time, action), col="blue")
 ```
 
+![](appendix_files/figure-gfm/unnamed-chunk-13-1.png)<!-- -->
 
-
-
-
-----
+-----
 
 ## Active Learning
 
-
-```{r}
-
+``` r
 models <- map(possible_a, function(a){
   f <- may(a)
  transition_matrix(states, actions, f, p$sigma)
 })
-  
 ```
 
-```{r}
+``` r
 transition <- models
 ```
 
-
-
 ## a near ghost
 
-```{r}
+``` r
 wd <- sd(possible_a)
 prior <- dnorm(possible_a, believe_a, wd/3)
 prior <- prior / sum(prior)
 ```
 
-```{r}
+``` r
 data.frame(a = possible_a, probability = prior) %>%
   ggplot(aes(a,prior)) + geom_bar(stat="identity") +
   geom_vline(aes(xintercept = true_a), col="red", lwd=1, lty=2) + 
   geom_vline(aes(xintercept = believe_a), col="blue", lwd=1, lty=2) 
 ```
 
+![](appendix_files/figure-gfm/unnamed-chunk-17-1.png)<!-- -->
 
-
-
-
-```{r}
+``` r
 mdp_learning_ <- memoise::memoise(mdp_learning)
   learning_sim <- mdp_learning_(transition, reward, discount, 
                       x0 = x0, 
@@ -274,20 +266,18 @@ mdp_learning_ <- memoise::memoise(mdp_learning)
                       model_prior = prior,
                       type = "value iteration", 
                       epsilon = 1e-2)
-
 ```
 
-
-```{r}
+``` r
  learning_sim$df %>% 
   select(-value) %>% 
   gather(series, state, -time) %>% 
   ggplot(aes(time, states[state], color = series)) + geom_line()
 ```
 
+![](appendix_files/figure-gfm/unnamed-chunk-19-1.png)<!-- -->
 
-
-```{r}
+``` r
  learning_sim$posterior %>% 
   data.frame(time = 1:Tmax) %>%
   filter(time %in% seq(1,Tmax, by = 5)) %>%
@@ -297,37 +287,20 @@ mdp_learning_ <- memoise::memoise(mdp_learning)
   geom_line()
 ```
 
-
-```{r}
-```
-
-
-
-
-
-
-
-
+![](appendix_files/figure-gfm/unnamed-chunk-20-1.png)<!-- -->
 
 -----
 
 # Simulations for Gretas
 
+“simulate” without any actions
 
-
-
-"simulate" without any actions
-
-
-```{r}
+``` r
 x0 <- which.min(abs(states - p$x0))
 Tmax <- 200
 ```
 
-
-
-```{r}
-
+``` r
 ## `actions` is an argument of indices, not necessarily the action values themselves 
 sim <- function (transition,  x0, Tmax, action = rep(1, Tmax)){
     n_states <- dim(transition)[2]
@@ -343,9 +316,7 @@ sim <- function (transition,  x0, Tmax, action = rep(1, Tmax)){
 }
 ```
 
-
-
-```{r}
+``` r
 set.seed(12346)
 no_switches <- sim(m_true, x0, Tmax)  %>% 
   mutate(state = states[state])
@@ -354,7 +325,9 @@ no_switches %>%
   ggplot(aes(time, state)) + geom_point() + geom_path() 
 ```
 
-```{r}
+![](appendix_files/figure-gfm/unnamed-chunk-24-1.png)<!-- -->
+
+``` r
 set.seed(12345)
 switches <- sim(m_true, x0, Tmax) %>% mutate(state = states[state])
 
@@ -362,11 +335,9 @@ switches  %>%
   ggplot(aes(time, state)) + geom_point() + geom_path() 
 ```
 
+![](appendix_files/figure-gfm/unnamed-chunk-25-1.png)<!-- -->
 
-
-
-
-```{r}
+``` r
 set.seed(1234)
 stable <- sim(m_belief, x0, Tmax)  %>% 
   mutate(state = states[state])
@@ -375,11 +346,9 @@ stable %>%
   ggplot(aes(time, state)) + geom_point() + geom_path() 
 ```
 
+![](appendix_files/figure-gfm/unnamed-chunk-26-1.png)<!-- -->
 
-
-
-
-```{r}
+``` r
 ## Collect the data sets.  Use names.
 examples <- bind_rows(switches = switches, 
                       no_switches = no_switches, 
@@ -387,23 +356,13 @@ examples <- bind_rows(switches = switches,
                       .id="series") 
 ```
 
+# Greta
 
-
-
-# Greta 
-
-
-
-
-
-
-
-```{r}
+``` r
 library(greta)
 ```
 
-
-```{r}
+``` r
 estimate_posterior <- function(df){
   X <- df$state
   # Reshape time-series data into ordered pairs
@@ -432,7 +391,7 @@ estimate_posterior <- function(df){
 }
 ```
 
-```{r mcmc, cache=TRUE}
+``` r
 if(!file.exists("samples.tsv.gz")){ # Manually cache the slow step
   
 samples <- examples %>% 
@@ -446,8 +405,7 @@ readr::write_tsv(samples, "samples.tsv.gz")
 }
 ```
 
-
-```{r, warning=FALSE, message=FALSE}
+``` r
 true <- tribble(~ value, ~ a,
                 believe_a, "attractor",
                 believe_a,  "attractor",
@@ -460,11 +418,4 @@ samples %>%
   facet_wrap(~variable, scales = "free")
 ```
 
-
-
-```{r}
-```
-
-
-
-
+![](appendix_files/figure-gfm/unnamed-chunk-30-1.png)<!-- -->
