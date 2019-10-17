@@ -11,11 +11,15 @@ p3 <- callr::r_bg(function() rmarkdown::render("notebook/discrete-sims.Rmd") )
 
 
 
-p4 <- callr::r_bg(function() rmarkdown::render("notebook/may-outbreak-ghost.Rmd") )
+p4 <- callr::r_bg(function() rmarkdown::render("notebook/may-outbreak-ghost.Rmd"),
+                  env = c(LD_PRELOAD="libnvblas.so"))
+
+
+
 p5 <- callr::r_bg(function() rmarkdown::render("notebook/may-outbreak-ghost-2.Rmd") )
 
 
-callr::poll(list(p4,p5), -1)
+callr::poll(list(p4), -1)
 
 
 p4$read_output_lines()
