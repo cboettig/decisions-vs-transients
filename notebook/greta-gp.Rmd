@@ -1,0 +1,95 @@
+---
+output: github_document
+
+---
+
+```{r setup}
+library(tidyverse)
+library(greta)
+library(greta.gp)
+#tensorflow::use_session_with_seed(1234)
+
+```
+
+
+
+
+
+```{r}
+arima_forecast <- readr::read_csv("../data/arima_forecast.csv.gz")
+train <- arima_forecast  %>% filter(t %in% seq(0, 2000, by = 5))
+
+wide <- select(train, x) %>% as.matrix() 
+n <- dim(wide)[1]
+x_t1 <- wide[-1,]
+x_t <- wide[-n,] 
+
+
+y <- c(0,x_t1 - x_t)
+x <- c(0, x_t)
+x_plot <- seq(0, 2, length.out = 200)
+```
+
+
+```{r}
+
+
+```
+
+
+
+```{r}
+# simulate toy data
+#x <- runif(20, 0, 10)
+#y <- sin(x) + rnorm(20, 0, 0.5)
+#x_plot <- seq(-1, 11, length.out = 200)
+```
+
+
+```{r}
+
+
+
+# hyperparameters
+rbf_var <- lognormal(0, 1)
+rbf_len <- lognormal(0, .01)
+obs_sd <- lognormal(0, .01)
+
+# kernel & GP
+kernel <- rbf(rbf_len, rbf_var) + bias(1)
+f <- gp(x, kernel)
+
+# likelihood
+distribution(y) <- normal(f, obs_sd)
+
+# prediction
+f_plot <- project(f, x_plot)
+```
+
+
+```{r}
+# fit the model by Hamiltonian Monte Carlo
+m <- model(f_plot)
+draws <- mcmc(m, one_by_one = TRUE)
+```
+
+
+
+```{r}
+# plot 200 posterior samples
+#plot(y ~ x, pch = 16, col = grey(0.4), xlim = c(0, 10), ylim = c(-2.5, 2.5))
+
+
+
+plot(y ~ x, pch = 16, col = grey(0.4), xlim = c(0, 2), ylim = c(-0.1, 0.15))
+for (i in 1:200) {
+  lines(draws[[1]][i, ] ~ x_plot,
+        lwd = 2,
+        col = rgb(0.7, 0.1, 0.4, 0.1))  
+}
+```
+
+```{r}
+```
+
+

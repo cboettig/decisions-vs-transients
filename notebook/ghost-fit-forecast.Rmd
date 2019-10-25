@@ -5,6 +5,11 @@ date: "5/30/2019"
 output: github_document
 ---
 
+
+# See: `manuscript/appendix/appendix.Rmd`
+
+
+
 ```{r message = FALSE, warning=FALSE}
 library(tidyverse)
 library(greta) # remotes::install_github("greta-dev/greta")
@@ -142,3 +147,6 @@ samples %>% ggplot() +
 ```
 
 
+
+```{r}
+```

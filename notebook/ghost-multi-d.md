@@ -1,24 +1,21 @@
----
-title: "simulation & inference of transients"
-author: "Carl Boettiger"
-date: "5/30/2019"
-output: github_document
----
-  
-```{r message = FALSE}
+simulation & inference of transients
+================
+Carl Boettiger
+5/30/2019
+
+``` r
 library(tidyverse)
 library(furrr)
 plan("multisession")
 set.seed(12345)
 ```
-  
-```{r}
+
+``` r
 du <- function(u,v, p) u * (1 - u) - p$a12 * u ^ p$n * v
 dv <- function(u, v, p) p$gamma * (v*(1-v) - p$a21 * u ^ p$n * v)
 ```
 
-
-```{r}
+``` r
 stochastic_sim <- function(du, dv, p, const){
   
   # inits
@@ -45,9 +42,7 @@ stochastic_sim <- function(du, dv, p, const){
 }
 ```
 
-
-
-```{r}
+``` r
 det_sim <- function(du, dv, p, const){
   
   # inits
@@ -65,12 +60,9 @@ det_sim <- function(du, dv, p, const){
   }
   data.frame(t = 1:const$Tmax, u, v)
 }
-
 ```
 
-
-
-```{r}
+``` r
 p <- list(a12 = 0.9, a21 = 1.1, gamma = 10, n = 1.55, sigma_u = 0.02, sigma_v = 0.02)  # n = 1.8
 const <- list(u0 = 1, v0 = 1, Tmax = 800, dt = 0.01)
 
@@ -79,51 +71,47 @@ det <- det_sim(du,dv,p, const)
 
 det %>% gather(species, population, -t) %>% 
   ggplot(aes(t, population, col=species)) + geom_line()
+```
 
+![](ghost-multi-d_files/figure-gfm/unnamed-chunk-5-1.png)<!-- -->
+
+``` r
 #det %>% ggplot(aes(u, v)) + geom_path()
 ```
 
-
-```{r}
+``` r
 system.time({
   df <- future_map_dfr(1:100, function(reps) stochastic_sim(du, dv, p, const), .id = "reps")
 })
-
-
 ```
 
+    ##    user  system elapsed 
+    ##   0.222   0.023   0.821
 
-```{r}
+``` r
 det <- det_sim(du, dv, p, const) %>% mutate(reps=1)
 mean <- df %>% group_by(t) %>% summarise(u = mean(u)) %>% mutate(reps = 1)
 ```
 
-```{r}
+``` r
 df %>% ggplot(aes(t, u, group=reps)) + 
   geom_line(alpha=0.1) +
   geom_line(data = det, color = "blue") + 
   geom_line(data = mean, color = "red")
 ```
 
+![](ghost-multi-d_files/figure-gfm/unnamed-chunk-8-1.png)<!-- -->
 
---------
+-----
 
-
-
-
-
-```{r}
+``` r
 dR <- function(R, C, P, p) R * (1 - R / p$K ) - p$xc * p$yc * C * R / (R + p$R0)
 
 dC <- function(R, C, P, p) p$xc * C * ( p$yc * R / (R + p$R0) - 1) - p$xp * p$yp * P * C / (C + p$C0)
 dP <- function(R, C, P, p) p$xp * P * ( p$yp * C / (C + p$C0) - 1) 
-
-
 ```
 
-
-
-````{r}
+``` r
 stochastic_sim <- function(dR, dC, dP, p, const){
   
   # inits
@@ -154,53 +142,51 @@ stochastic_sim <- function(dR, dC, dP, p, const){
 }
 ```
 
-```{r}
+``` r
 dt=0.01
 p <- list(xc = 0.4, yc = 2.009, xp = 0.08, yp = 2.876, R0 = 0.16129, C0 = 0.5, 
 K = 1, sigma_r = 0.0, sigma_c = 0.0, sigma_p = 0.0)
 const <- list(R0 = .5, C0 = .5, P0=1, Tmax = 200/dt, dt = dt)
-
 ```
 
-```{r}
+``` r
 system.time({
   df <- future_map_dfr(1:10, function(reps) stochastic_sim(dR, dC, dP, p, const), .id = "reps")
 })
 ```
 
+    ##    user  system elapsed 
+    ##   0.121   0.009   1.095
 
-```{r}
+``` r
 mean <- df %>% group_by(t) %>% summarise(R = mean(R), C = mean(C), P = mean(P)) %>% mutate(reps = 1)
 ```
 
-
-```{r}
+``` r
 mean %>% ggplot(aes(R, C, col=t)) + 
   geom_path() 
 ```
 
-```{r}
+![](ghost-multi-d_files/figure-gfm/unnamed-chunk-14-1.png)<!-- -->
+
+``` r
 mean %>% ggplot(aes(C, P, col=t)) + 
   geom_path() 
 ```
 
-```{r}
+![](ghost-multi-d_files/figure-gfm/unnamed-chunk-15-1.png)<!-- -->
+
+``` r
 mean %>% gather(species, pop, -t) %>%
   ggplot(aes(t, pop, col=species)) + 
   geom_line()
 ```
 
-
-
-
-
-
+![](ghost-multi-d_files/figure-gfm/unnamed-chunk-16-1.png)<!-- -->
 
 generic form
 
-```{r}
-
-
+``` r
 stochsim <- function(f, pars, sigma, inits, Tmax, dt = 0.01){
   
   ## Initial conditions
@@ -251,17 +237,13 @@ sim <- function(f, pars, sigma = numeric(length(f)), inits, Tmax, dt = 0.01){
 }
 ```
 
-
-
-```{r}
+``` r
 dR <- function(X, p) X[1] * (1 - (X[1] / p$K)) - p$xc * p$yc * X[2]* X[1] / (X[1] + p$R0)
 
 dC <- function(X, p) p$xc * x[2] * ((p$yc * X[1] / (X[1] + p$R0)) - 1) - p$xp * p$yp * X[3] * X[2] / (X[2] + p$C0)
 dP <- function(X, p) p$xp * X[3] * ((p$yp * X[2] / (X[2] + p$C0)) - 1) 
-
 ```
 
-
-```{r}
+``` r
 #sim(list(dR, dC, dP), p, c(0.2,0.2,0.2), c(1,1,1), 1000)
 ```
