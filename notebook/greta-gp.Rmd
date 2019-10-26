@@ -40,9 +40,10 @@ x_plot <- seq(0, 2, length.out = 200)
 
 ```{r}
 # simulate toy data
-#x <- runif(20, 0, 10)
-#y <- sin(x) + rnorm(20, 0, 0.5)
-#x_plot <- seq(-1, 11, length.out = 200)
+n<- 10
+x <- runif(n, 0, 10)
+y <- sin(x) + rnorm(n, 0, 0.5)
+x_plot <- seq(-1, 14, length.out = 200)
 ```
 
 
@@ -51,15 +52,15 @@ x_plot <- seq(0, 2, length.out = 200)
 
 
 # hyperparameters
-rbf_var <- lognormal(0, 1)
-rbf_len <- lognormal(0, .01)
-obs_sd <- lognormal(0, .01)
+rbf_var <- 10 # lognormal(0, 1)
+rbf_len <- 0.5 #lognormal(0, .01)
+obs_sd <- .01 #lognormal(0, .01)
 
 # kernel & GP
-kernel <- rbf(rbf_len, rbf_var) + bias(1)
+kernel <- rbf(rbf_len, rbf_var)
 f <- gp(x, kernel)
 
-# likelihood
+# likelihood -- not clear how this influences f_plot?
 distribution(y) <- normal(f, obs_sd)
 
 # prediction
@@ -70,23 +71,25 @@ f_plot <- project(f, x_plot)
 ```{r}
 # fit the model by Hamiltonian Monte Carlo
 m <- model(f_plot)
-draws <- mcmc(m, one_by_one = TRUE)
+draws <- mcmc(m, warmup = 0)
 ```
 
 
 
 ```{r}
 # plot 200 posterior samples
-#plot(y ~ x, pch = 16, col = grey(0.4), xlim = c(0, 10), ylim = c(-2.5, 2.5))
+plot(y ~ x, pch = 16, col = grey(0.4), xlim = c(0, 14), ylim = c(-3, 3))
 
 
 
-plot(y ~ x, pch = 16, col = grey(0.4), xlim = c(0, 2), ylim = c(-0.1, 0.15))
+#plot(y ~ x, pch = 16, col = grey(0.4), xlim = c(0, 2), ylim = c(-0.1, 0.15))
 for (i in 1:200) {
   lines(draws[[1]][i, ] ~ x_plot,
         lwd = 2,
         col = rgb(0.7, 0.1, 0.4, 0.1))  
 }
+points(y ~ x, pch = 16, col = grey(0.4), xlim = c(0, 14), ylim = c(-3, 3))
+
 ```
 
 ```{r}

@@ -1,0 +1,40 @@
+---
+output: github_markdown
+---
+
+```{python}
+import numpy as np
+import tensorflow as tf
+import tensorflow_probability as tfp
+```
+
+```{python}
+tfd = tfp.distributions
+psd_kernels = tfp.positive_semidefinite_kernels
+```
+
+```{python}
+num_points = 100
+# Index points should be a collection (100, here) of feature vectors. In this
+# example, we're using 1-d vectors, so we just need to reshape the output from
+# np.linspace, to give a shape of (100, 1).
+index_points = np.expand_dims(np.linspace(-1., 1., num_points), -1)
+
+# Define a kernel with default parameters.
+kernel = psd_kernels.ExponentiatedQuadratic()
+```
+
+```{python}
+gp = tfd.GaussianProcess(kernel, index_points)
+
+samples = gp.sample(10)
+# ==> 10 independently drawn, joint samples at `index_points`
+
+noisy_gp = tfd.GaussianProcess(
+    kernel=kernel,
+    index_points=index_points,
+    observation_noise_variance=.05)
+noisy_samples = noisy_gp.sample(10)
+
+noisy_samples
+```
