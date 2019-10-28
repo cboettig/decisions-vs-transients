@@ -11,10 +11,8 @@ First I take a look at doing some simple tasks involving Gaussian processes in b
 
 
 ```{r setup, message = FALSE, warning = FALSE}
-
-require(MASS)
-require(reshape2)
-require(ggplot2)
+library(MASS)
+library(tidyverse)
 
 knitr::opts_chunk$set(message=FALSE, warning=FALSE)
 
@@ -178,7 +176,7 @@ ggplot(dat,aes(x=x,y=value)) +
   geom_ribbon(data=gp, 
               aes(x=x_predict, y=Ef, ymin=Ef-sigma, ymax=Ef+sigma),
               fill="grey80") + # Var
-  geom_line(aes(color=variable)) + #REPLICATES
+  geom_line(aes(group=variable), alpha=0.3, col=rgb(0.7, 0.1, 0.4, 0.1)) + #REPLICATES
   geom_line(data=gp,aes(x=x_predict,y=Ef), size=1) + #MEAN
   geom_point(data=obs,aes(x=x,y=y)) +  #OBSERVED DATA
   scale_y_continuous(lim=c(-3,3), name="output, f(x)") +
@@ -210,27 +208,45 @@ y <- obs$y
 x <- obs$x
 
 # hyperparameters
-rbf_var <- 10 # lognormal(0, 1)
-rbf_len <- 0.5 #lognormal(0, .01)
-obs_sd <- .01 #lognormal(0, .01)
+rbf_var <- lognormal(0, 1)
+rbf_len <- lognormal(0, 1)
+obs_sd <- lognormal(0, 1)
 
 # kernel & GP
 kernel <- rbf(rbf_len, rbf_var)
 f <- gp(x, kernel)
 
 # likelihood -- not clear how this influences f_plot?
-distribution(y) <- normal(f, obs_sd)
+distribution(y)<- normal(f, obs_sd)
 
 # prediction
-f_plot <- project(f, x_plot)
+f_plot <- project(f, x_predict)
 ```
 
 
 ```{r}
 # fit the model by Hamiltonian Monte Carlo
-m <- model(f_plot)
-draws <- mcmc(m, warmup = 0)
-```
+m <- model(f_plot, rbf_len, rbf_var, obs_sd)
+draws <- mcmc(m, chains = 1, one_by_one = TRUE)
 ```
 
+```{r}
+df <- draws[[1]] %>% as_tibble(.name_repair = "universal") 
+hyperpars <- df %>% dplyr::select(rbf_len, obs_sd, rbf_var)  
+posterior <- df %>% dplyr::select(-rbf_len, -obs_sd, -rbf_var)    
+
+hyperpars %>% colMeans()
+#hyperpars %>% gather() %>% ggplot(aes(x = value, fill=key)) + stat_density() + facet_wrap(~key)
+```
+
+
+```{r}
+posterior %>% t() %>% as_tibble() %>% dplyr::select(1:200) %>% mutate(x = x_predict) %>% pivot_longer(-x)  %>%
+  ggplot(aes(x,value)) + 
+  geom_line(aes(group=name), alpha=0.3, col=rgb(0.7, 0.1, 0.4, 0.1)) +
+  geom_point(data = obs, aes(x,y))
+```
+
+```{r}
+```
 

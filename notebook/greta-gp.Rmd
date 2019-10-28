@@ -13,11 +13,71 @@ library(greta.gp)
 
 
 
+## Model Definition
+
+  
+```{r}
+p <- list(r = .05, K = 200, Q = 5, H = 38, sigma = .002, a=2.3, N = 3e3, x0 = 6)
+```
+
+
+```{r}
+growth <- function(x, p) x * p$r * (1 - x / p$K)
+consumption <- function(x, p) p$a * x ^ p$Q / (x^p$Q + p$H^p$Q)
+may <- function(x, p) x + growth(x,p) - consumption(x,p)
+```
+
+## Model simulations
+
+```{r}
+# Generic simulator routine
+sim <- function(f, p){
+  x <- numeric(p$N)
+  x[1] <- p$x0
+  dBt <- numeric(p$N)
+  if(p$sigma > 0) dBt <- rnorm(p$N, 0, p$sigma)
+  for(t in 1:(p$N-1)){
+    x[t+1] <- max(f(x[t], p) + x[t] * dBt[t], 0)
+  }
+  data.frame(t = 1:p$N, x)
+}
+```
+
+
+Deterministic simulations: 
+
+```{r}
+p_det <- p
+p_det$sigma <- 0
+det <- sim(may,p_det) 
+det_diffs <- det %>% mutate(y = lead(x)-x, case = "det")
+det_diffs <- det %>% mutate(y = c(diff(x),NA), case = "det")
+
+ex <- sim(may,p) 
+ex %>% mutate(y = lead(x)-x, case = "stoch")  %>% bind_rows(det_diffs) %>%
+  ggplot(aes(x,y, col=case)) + geom_point()
+```
+
+```{r}
+ghost <- readr::read_csv("../data/ghost_sims.csv.gz")
+wide <- ghost %>% pivot_wider(names_from = reps, values_from = x) %>% select(-t)
+n <- dim(wide)[1]
+x_t1 <- wide[-1,]
+x_t <- wide[-n,] 
+y <- x_t1 - x_t
+Y <- y %>% apply(1, mean, na.rm=TRUE)
+X <- x_t %>% apply(1, mean, na.rm=TRUE)
+
+tibble(x=X,y=Y, case="mean") %>% bind_rows(det_diffs) %>% ggplot(aes(x,y, col=case)) + geom_point()
+
+ghost %>% group_by(reps) %>%  mutate(y = lead(x)-x) %>% 
+  ggplot(aes(x,y)) + geom_point(size=.1, alpha=0.005)
+```
 
 
 ```{r}
 arima_forecast <- readr::read_csv("../data/arima_forecast.csv.gz")
-train <- arima_forecast  %>% filter(t %in% seq(0, 2000, by = 5))
+train <- arima_forecast  #%>% filter(t %in% seq(0, 2000, by = 5))
 
 wide <- select(train, x) %>% as.matrix() 
 n <- dim(wide)[1]
@@ -27,72 +87,62 @@ x_t <- wide[-n,]
 
 y <- c(0,x_t1 - x_t)
 x <- c(0, x_t)
-x_plot <- seq(0, 2, length.out = 200)
+x_predict <- seq(0, 2, length.out = 200)
+
+tibble(x,y) %>% ggplot(aes(x,y)) + geom_point()
 ```
+
+----
 
 
 ```{r}
-
-
-```
-
-
-
-```{r}
-# simulate toy data
-n<- 10
-x <- runif(n, 0, 10)
-y <- sin(x) + rnorm(n, 0, 0.5)
-x_plot <- seq(-1, 14, length.out = 200)
-```
-
-
-```{r}
-
-
+# kernel & GP
+y <- diff(ex$x)
+x <- ex$x[-n]
+ggplot(data.frame(x,y), aes(x,y)) + geom_point()
 
 # hyperparameters
-rbf_var <- 10 # lognormal(0, 1)
-rbf_len <- 0.5 #lognormal(0, .01)
-obs_sd <- .01 #lognormal(0, .01)
+rbf_var <- lognormal(0, 1)
+rbf_len <- lognormal(0, 10)
+obs_sd <- lognormal(0, .1)
 
 # kernel & GP
 kernel <- rbf(rbf_len, rbf_var)
 f <- gp(x, kernel)
 
 # likelihood -- not clear how this influences f_plot?
-distribution(y) <- normal(f, obs_sd)
+distribution(y)<- normal(f, obs_sd)
 
 # prediction
-f_plot <- project(f, x_plot)
+f_plot <- project(f, x_predict)
 ```
 
 
 ```{r}
 # fit the model by Hamiltonian Monte Carlo
-m <- model(f_plot)
-draws <- mcmc(m, warmup = 0)
-```
-
-
-
-```{r}
-# plot 200 posterior samples
-plot(y ~ x, pch = 16, col = grey(0.4), xlim = c(0, 14), ylim = c(-3, 3))
-
-
-
-#plot(y ~ x, pch = 16, col = grey(0.4), xlim = c(0, 2), ylim = c(-0.1, 0.15))
-for (i in 1:200) {
-  lines(draws[[1]][i, ] ~ x_plot,
-        lwd = 2,
-        col = rgb(0.7, 0.1, 0.4, 0.1))  
-}
-points(y ~ x, pch = 16, col = grey(0.4), xlim = c(0, 14), ylim = c(-3, 3))
-
+m <- model(f_plot, rbf_len, rbf_var, obs_sd)
+draws <- mcmc(m, chains = 1, one_by_one = TRUE)
 ```
 
 ```{r}
+df <- draws[[1]] %>% as_tibble(.name_repair = "universal") 
+hyperpars <- df %>% dplyr::select(rbf_len, obs_sd, rbf_var)  
+posterior <- df %>% dplyr::select(-rbf_len, -obs_sd, -rbf_var)    
+
+hyperpars %>% colMeans()
+#hyperpars %>% gather() %>% ggplot(aes(x = value, fill=key)) + stat_density() + facet_wrap(~key)
 ```
+
+
+```{r}
+posterior %>% t() %>% as_tibble() %>% dplyr::select(1:200) %>% mutate(x = x_predict) %>% pivot_longer(-x)  %>%
+  ggplot(aes(x,value)) + 
+  geom_line(aes(group=name), alpha=0.3, col=rgb(0.7, 0.1, 0.4, 0.1)) +
+  geom_point(data = obs, aes(x,y))
+```
+
+```{r}
+```
+
 
 
