@@ -1,12 +1,9 @@
----
-output: github_document
----
 
+This directly maps the python code provided in the early examples of the
+TensorFlow official documentation into R using `reticulate`, see:
+<https://www.tensorflow.org/probability/api_docs/python/tfp/distributions/GaussianProcess>
 
-
-This directly maps the python code provided in the early examples of the TensorFlow official documentation into R using `reticulate`, see: https://www.tensorflow.org/probability/api_docs/python/tfp/distributions/GaussianProcess
-
-```{r message=FALSE}
+``` r
 library(tidyverse)
 library(reticulate)
 library(tensorflow)
@@ -19,15 +16,14 @@ sess <- tf$Session()
 knitr::opts_chunk$set(error=FALSE)
 ```
 
-
-```{r}
+``` r
 tfd <- tfp$distributions
 psd_kernels <- tfp$positive_semidefinite_kernels
 ```
 
 ## Draws from Prior
 
-```{r}
+``` r
 num_points = 100L
 # Index points should be a collection (100, here) of feature vectors. In this
 # example, we're using 1-d vectors, so we just need to reshape the output from
@@ -43,18 +39,16 @@ kernel = psd_kernels$ExponentiatedQuadratic(var, len)## Radial basis function
   #psd_kernels$ExponentiatedQuadratic()
 ```
 
-
-```{r}
+``` r
 gp = tfd$GaussianProcess(kernel, index_points)
 
 samples = gp$sample(10L)
 # ==> 10 independently drawn, joint samples at `index_points`
 ```
 
+Or with observation error:
 
-Or with observation error: 
-
-```{r}
+``` r
 noisy_gp = tfd$GaussianProcess(
     kernel=kernel,
     index_points=index_points,
@@ -65,11 +59,11 @@ noisy_samples = noisy_gp$sample(10L)
 
 Evaluate and extract results
 
-```{r}
+``` r
 out <- sess$run(samples) 
 ```
 
-```{r}
+``` r
 out %>% 
   t() %>% 
   as_tibble %>% 
@@ -78,12 +72,18 @@ out %>%
   ggplot(aes(x, value, group = name)) + geom_line(col = "purple", alpha=0.4)
 ```
 
+    ## Warning: `as_tibble.matrix()` requires a matrix with column names or a `.name_repair` argument. Using compatibility `.name_repair`.
+    ## This warning is displayed once per session.
+
+![](python-reticulate-gp_files/figure-gfm/unnamed-chunk-7-1.png)<!-- -->
+
 ## Gaussian Process Regression
 
-This follows the examples in the official Tensorflow documentation for Gaussian Process Regression: https://www.tensorflow.org/probability/api_docs/python/tfp/distributions/GaussianProcessRegressionModel
+This follows the examples in the official Tensorflow documentation for
+Gaussian Process Regression:
+<https://www.tensorflow.org/probability/api_docs/python/tfp/distributions/GaussianProcessRegressionModel>
 
-
-```{r}
+``` r
 # Generate noisy observations from a known function at some random points.
 observation_noise_variance <- 0 #<-  tf$constant(obs, dtype = tf$float64)
 len <-  tf$constant(0.1, dtype = tf$float64)
@@ -96,7 +96,13 @@ observation_index_points = runif(5L, -1, 1) %>% as.matrix(ncol = 1)
 ## Observations must be a numeric, not an array. (vector of values Y, not matrix of features)
 observations = f(as.numeric(observation_index_points)) +
   runif(2L, 0., sqrt(observation_noise_variance)) 
+```
 
+    ## Warning in f(as.numeric(observation_index_points)) + runif(2L, 0,
+    ## sqrt(observation_noise_variance)): longer object length is not a multiple
+    ## of shorter object length
+
+``` r
 index_points = seq(-1, 1, len=100L) %>% as.matrix(ncol = 1) 
 
 ## This works too but no need to it in python, the above is fine!!
@@ -119,12 +125,11 @@ gprm = tfd$GaussianProcessRegressionModel(
 samples = gprm$sample(100L)
 ```
 
-
-```{r}
+``` r
 out <- sess$run(samples) 
 ```
 
-```{r}
+``` r
 ob <- data.frame(x = observation_index_points, y = observations, name = "data")
 
 out %>% 
@@ -137,12 +142,11 @@ out %>%
   geom_point(data = ob, aes(x,y))
 ```
 
+![](python-reticulate-gp_files/figure-gfm/unnamed-chunk-10-1.png)<!-- -->
 
+## With additive noise
 
-## With additive noise 
-
-
-```{r}
+``` r
 # Generate noisy observations from a known function at some random points.
 observation_noise_variance <- 0.1 #<-  tf$constant(obs, dtype = tf$float64)
 len <-  tf$constant(0.1, dtype = tf$float64)
@@ -155,7 +159,13 @@ observation_index_points = runif(5L, -1, 1) %>% as.matrix(ncol = 1)
 ## Observations must be a numeric, not an array. (vector of values Y, not matrix of features)
 observations = f(as.numeric(observation_index_points)) +
   runif(2L, 0., sqrt(observation_noise_variance)) 
+```
 
+    ## Warning in f(as.numeric(observation_index_points)) + runif(2L, 0,
+    ## sqrt(observation_noise_variance)): longer object length is not a multiple
+    ## of shorter object length
+
+``` r
 index_points = seq(-1, 1, len=100L) %>% as.matrix(ncol = 1) 
 
 ## This works too but no need to it in python, the above is fine!!
@@ -178,12 +188,11 @@ gprm = tfd$GaussianProcessRegressionModel(
 samples = gprm$sample(100L)
 ```
 
-
-```{r}
+``` r
 out <- sess$run(samples) 
 ```
 
-```{r}
+``` r
 ob <- data.frame(x = observation_index_points, y = observations, name = "data")
 
 out %>% 
@@ -196,13 +205,13 @@ out %>%
   geom_point(data = ob, aes(x,y))
 ```
 
-
+![](python-reticulate-gp_files/figure-gfm/unnamed-chunk-13-1.png)<!-- -->
 
 ## ML
 
-From: 
+From:
 
-```{r}
+``` r
 # Define a kernel with trainable parameters. Note we transform the trainable
 # variables to apply a positivity constraint.
 amplitude = tf$exp(tf$Variable(1, dtype=np$float64), name='amplitude')
@@ -231,12 +240,11 @@ gprm = tfd$GaussianProcessRegressionModel(
     observation_noise_variance=observation_noise_variance)
 
 ml_samples = gprm$sample(10L)
-
 ```
 
+Note that we need to initialize variables\!
 
-Note that we need to initialize variables!  
-```{r}
+``` r
 init_op <- tf$global_variables_initializer()
 with(tf$Session() %as% sess, {
    # Run the 'init' op
@@ -249,7 +257,7 @@ with(tf$Session() %as% sess, {
 })
 ```
 
-```{r}
+``` r
 ob <- data.frame(x = observation_index_points, y = observations, name = "data")
 
 out %>% 
@@ -262,23 +270,14 @@ out %>%
   geom_point(data = ob, aes(x,y))
 ```
 
-
-
-
-
-
-
-
-
-
-
+![](python-reticulate-gp_files/figure-gfm/unnamed-chunk-16-1.png)<!-- -->
 
 ## MCMC
 
-**Work in progress, this mapping from the python into R is not working yet**
+**Work in progress, this mapping from the python into R is not working
+yet**
 
-```{r}
-
+``` r
 joint_log_prob <- function(
     index_points, observations, amplitude, length_scale, noise_variance){
   # Hyperparameter Distributions
@@ -306,8 +305,7 @@ joint_log_prob <- function(
 }
 ```
 
-
-```{r}
+``` r
 scale <- tf$constant(1e-1, dtype=np$float64)
 initial_chain_states = list(
     scale * tf$ones(1, dtype=np$float64, name='init_amplitude'),
@@ -345,8 +343,7 @@ num_results = 200L
   # )
 ```
 
-
-```{r}
+``` r
 out = tfp$mcmc$sample_chain(
   num_results = num_results,
   num_burnin_steps = 500L,
@@ -366,14 +363,13 @@ out = tfp$mcmc$sample_chain(
 # of index points.
 ```
 
-
-```{r}
+``` r
 #with(tf$Session() %as% sess){
 #  out <- sess$run(out)
 #}
 ```
 
-```{r}
+``` r
 gprm = tfd$GaussianProcessRegressionModel(
     # Batch of `num_results` kernels parameterized by the MCMC samples.
     kernel=psd_kernels$ExponentiatedQuadratic(out[[0]][[1]], out[[0]][[2]]),
@@ -386,11 +382,8 @@ gprm = tfd$GaussianProcessRegressionModel(
 samples = gprm$sample()
 ```
 
-
-
-```{r eval=FALSE}
+``` r
 ## NOT RUN YET
 samples_ = sess$run(samples)
 res = sess$run(c(kernel_results = out, samples = samples))
-
 ```
