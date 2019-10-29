@@ -4,10 +4,10 @@ output: github_document
 ---
 
 ```{r setup}
-library(tidyverse)
 library(greta)
 library(greta.gp)
 #tensorflow::use_session_with_seed(1234)
+library(tidyverse)
 
 ```
 
@@ -58,9 +58,9 @@ ex %>% mutate(y = lead(x)-x, case = "stoch")  %>% bind_rows(det_diffs) %>%
   ggplot(aes(x,y, col=case)) + geom_point()
 ```
 
-```{r}
+```{r eval=FALSE}
 ghost <- readr::read_csv("../data/ghost_sims.csv.gz")
-wide <- ghost %>% pivot_wider(names_from = reps, values_from = x) %>% select(-t)
+wide <- ghost %>% dplyr::select(-t) %>% pivot_wider(names_from = reps, values_from = x) 
 n <- dim(wide)[1]
 x_t1 <- wide[-1,]
 x_t <- wide[-n,] 
@@ -120,7 +120,7 @@ f_plot <- project(f, x_predict)
 
 ```{r}
 # fit the model by Hamiltonian Monte Carlo
-m <- model(f_plot, rbf_len, rbf_var, obs_sd)
+m <- model(f, rbf_len, rbf_var, obs_sd)
 draws <- mcmc(m, chains = 1, one_by_one = TRUE)
 ```
 

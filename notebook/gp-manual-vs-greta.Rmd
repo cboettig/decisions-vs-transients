@@ -4,7 +4,7 @@ title: Basic regression in Gaussian processes
 category: ecology
 tag: nonparametric-bayes
 code: true
-output: html_document
+output: github_document
 ---
 
 First I take a look at doing some simple tasks involving Gaussian processes in base R and sample from them with basic multi-variate normal random draw, `mvrnorm`.  Then, I speculate (unsuccessfully) on how to do this in greta.
@@ -109,7 +109,7 @@ values <- mvrnorm(200, Ef, Cf)
 ```
 
 
-and plot our solution (mean, 2 standard deviations, and the ranom samples.)
+and plot our solution (mean in black, 2 standard deviations in grey riboon, and the 200 random samples in purple.)
 
 
 ```{r}
@@ -121,13 +121,13 @@ dat <- data.frame(x=x_predict, t(values)) %>%
 gp <- data.frame(x = x_predict, Ef = Ef, sigma = 2*sqrt(diag(Cf)) )
 
 ggplot(dat,aes(x=x,y=value)) + 
-  #geom_line(aes(group=rep), color =  rgb(0.7, 0.1, 0.4), alpha = 0.2) + #REPLICATES
+  geom_line(aes(group=rep), color =  rgb(0.7, 0.1, 0.4), alpha = 0.2) + #REPLICATES
   geom_ribbon(data = gp, 
               aes(x, 
                   y = Ef, 
                   ymin = Ef - sigma, 
                   ymax = Ef + sigma),
-              fill="blue", alpha = 0.1) +
+              fill="grey", alpha = 0.4) +
   geom_line(dat = gp, aes(x=x,y=Ef), size=1) + #MEAN
   geom_point(data=obs,aes(x=x,y=y)) +  #OBSERVED DATA
   scale_y_continuous(lim=c(-3,3), name="output, f(x)") +
@@ -162,12 +162,12 @@ values <- mvrnorm(200, Ef, Cf)
 ```
 
 
-and plot 
+and plot (both sample curves, in purple, and the theoretical expected variance as a grey ribbon)
 
 
 ```{r}
 dat <- data.frame(x=x_predict, t(values))
-dat <- melt(dat, id="x")
+dat <- reshape2::melt(dat, id="x")
 
 gp <- data.frame(x_predict = x_predict, Ef = Ef, sigma = 2*sqrt(diag(Cf)) )
 
@@ -199,8 +199,51 @@ library(greta)
 library(greta.gp)
 ```
 
+# Try greta with fixed parameters
+
+Here I try to replicate the above results under 'no additive noise' by setting the noise term to (almost) zero.  (trying `obs_sd = 0` causes the MCMC to fail to find initial values)
+
+```{r}
+# kernel & GP
+y <- obs$y
+x <- obs$x
+
+# hyperparameters
+rbf_var <- 1
+rbf_len <- 1
+obs_sd <- 0.001
+
+# kernel & GP
+kernel <- rbf(rbf_len, rbf_var)
+f <- gp(x, kernel)
+
+# likelihood -- not clear how this influences f_plot?
+distribution(y)<- normal(f, obs_sd)
+
+# prediction
+f_plot <- project(f, x_predict)
+```
 
 
+```{r}
+# fit the model by Hamiltonian Monte Carlo
+m <- model(f_plot)
+draws <- mcmc(m, chains = 1, one_by_one = TRUE)
+```
+
+Unfortunately, instead of causing the GP to collapse down only at the data points, like in the example above, this cause the GP samples to collapse entirely: 
+
+```{r}
+draws[[1]] %>% t() %>% as_tibble() %>% dplyr::select(1:200) %>% 
+  mutate(x = x_predict) %>% pivot_longer(-x)  %>%
+  ggplot(aes(x,value)) + 
+  geom_line(aes(group=name), alpha=0.3, col=rgb(0.7, 0.1, 0.4, 0.1)) +
+  geom_point(data = obs, aes(x,y))
+```
+
+
+
+# MCMC with greta
 
 ```{r}
 # kernel & GP

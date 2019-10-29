@@ -1,72 +1,18 @@
 Basic regression in Gaussian processes
 ================
 
+First I take a look at doing some simple tasks involving Gaussian
+processes in base R and sample from them with basic multi-variate normal
+random draw, `mvrnorm`. Then, I speculate (unsuccessfully) on how to do
+this in greta.
+
 ``` r
+library(MASS)
 library(tidyverse)
-```
 
-    ## ── Attaching packages ─────────────────────────────────────────────────────────────────── tidyverse 1.2.1 ──
+knitr::opts_chunk$set(message=FALSE, warning=FALSE)
 
-    ## ✔ ggplot2 3.2.1     ✔ purrr   0.3.3
-    ## ✔ tibble  2.1.3     ✔ dplyr   0.8.3
-    ## ✔ tidyr   1.0.0     ✔ stringr 1.4.0
-    ## ✔ readr   1.3.1     ✔ forcats 0.4.0
 
-    ## ── Conflicts ────────────────────────────────────────────────────────────────────── tidyverse_conflicts() ──
-    ## ✖ dplyr::filter() masks stats::filter()
-    ## ✖ dplyr::lag()    masks stats::lag()
-
-``` r
-library(greta)
-```
-
-    ## 
-    ## Attaching package: 'greta'
-
-    ## The following object is masked from 'package:dplyr':
-    ## 
-    ##     slice
-
-    ## The following objects are masked from 'package:stats':
-    ## 
-    ##     binomial, cov2cor, poisson
-
-    ## The following objects are masked from 'package:base':
-    ## 
-    ##     %*%, apply, backsolve, beta, chol2inv, colMeans, colSums,
-    ##     diag, eigen, forwardsolve, gamma, identity, rowMeans, rowSums,
-    ##     sweep, tapply
-
-``` r
-library(greta.gp)
-
-require(MASS)
-```
-
-    ## Loading required package: MASS
-
-    ## 
-    ## Attaching package: 'MASS'
-
-    ## The following object is masked from 'package:dplyr':
-    ## 
-    ##     select
-
-``` r
-require(reshape2)
-```
-
-    ## Loading required package: reshape2
-
-    ## 
-    ## Attaching package: 'reshape2'
-
-    ## The following object is masked from 'package:tidyr':
-    ## 
-    ##     smiths
-
-``` r
-require(ggplot2)
 set.seed(12345)
 ```
 
@@ -91,31 +37,29 @@ cov <- function(X, Y) outer(X, Y, SE, l)
 COV <- cov(x_predict, x_predict)
 ```
 
-Generate (draw) a number of functions from the process
+Generate (draw) a number of functions from the process (note that this
+is not conditioned on any data, and we are leaving the hyperparameter
+`l` fixed)
 
 ``` r
-values <- mvrnorm(3, rep(0, length=length(x_predict)), COV)
+values <- mvrnorm(200, rep(0, length=length(x_predict)), COV)
 ```
 
 Reshape the data into long (tidy) form, listing x value, y value, and
 sample number
 
 ``` r
-dat <- data.frame(x=x_predict, t(values))
-dat <- melt(dat, id="x")
+dat <- data.frame(x=x_predict, t(values)) %>%
+  tidyr::pivot_longer(-x, names_to = "rep", values_to = "value") %>% 
+  mutate(rep = as.numeric(as.factor(rep)))
 
-fig2a <- ggplot(dat,aes(x=x,y=value)) +
-  geom_rect(xmin=-Inf, xmax=Inf, ymin=-2, ymax=2, fill="grey80") +
-  geom_line(aes(group=variable))  +
-  scale_y_continuous(lim=c(-3,3), name="output, f(x)") +
-  xlab("input, x") +
-  theme_bw()
-fig2a
+ggplot(dat,aes(x=x,y=value)) +
+  geom_line(aes(group=rep), color =  rgb(0.7, 0.1, 0.4), alpha = 0.4) 
 ```
 
-![](gp-manual-vs-greta_files/figure-gfm/unnamed-chunk-6-1.png)<!-- -->
+![](gp-manual-vs-greta_files/figure-gfm/unnamed-chunk-5-1.png)<!-- -->
 
-### Posterior distribution given the data
+### Posterior distribution conditional on data
 
 Imagine we have some data,
 
@@ -155,40 +99,35 @@ Cf <- cov(x_predict, x_predict) - cov(x_predict, obs$x)  %*% cov_xx_inv %*% cov(
 Now lets take 3 random samples from the posterior distribution,
 
 ``` r
-values <- mvrnorm(3, Ef, Cf)
+values <- mvrnorm(200, Ef, Cf)
 ```
 
-and plot our solution (mean, 2 standard deviations, and the ranom
-samples.)
+and plot our solution (mean in black, 2 standard deviations in grey
+riboon, and the 200 random samples in purple.)
 
 ``` r
-dat <- data.frame(x=x_predict, t(values))
-dat <- melt(dat, id="x")
+dat <- data.frame(x=x_predict, t(values)) %>%
+  tidyr::pivot_longer(-x, names_to = "rep", values_to = "value") %>% 
+  mutate(rep = as.numeric(as.factor(rep)))
 
 
 gp <- data.frame(x = x_predict, Ef = Ef, sigma = 2*sqrt(diag(Cf)) )
 
 ggplot(dat,aes(x=x,y=value)) + 
+  geom_line(aes(group=rep), color =  rgb(0.7, 0.1, 0.4), alpha = 0.2) + #REPLICATES
   geom_ribbon(data = gp, 
               aes(x, 
                   y = Ef, 
                   ymin = Ef - sigma, 
-                  ymax = Ef + sigma
-              ),
-              fill="grey80") +
-  geom_line(aes(color=variable)) + #REPLICATES
+                  ymax = Ef + sigma),
+              fill="grey", alpha = 0.4) +
   geom_line(dat = gp, aes(x=x,y=Ef), size=1) + #MEAN
   geom_point(data=obs,aes(x=x,y=y)) +  #OBSERVED DATA
   scale_y_continuous(lim=c(-3,3), name="output, f(x)") +
   xlab("input, x")
 ```
 
-    ## Warning: Ignoring unknown aesthetics: y
-
-![](gp-manual-vs-greta_files/figure-gfm/unnamed-chunk-10-1.png)<!-- -->
-
-![plot of draws from the posterior, with no proces
-noise](http://farm9.staticflickr.com/8237/8591045344_918138a53a_o.png)
+![](gp-manual-vs-greta_files/figure-gfm/unnamed-chunk-9-1.png)<!-- -->
 
 ## Additive noise
 
@@ -207,36 +146,140 @@ Cf <- cov(x_predict, x_predict) - cov(x_predict, obs$x)  %*% cov_xx_inv %*% cov(
 Now lets take 3 random samples from the posterior distribution,
 
 ``` r
-values <- mvrnorm(3, Ef, Cf)
+values <- mvrnorm(200, Ef, Cf)
 ```
 
-and plot
+and plot (both sample curves, in purple, and the theoretical expected
+variance as a grey ribbon)
 
 ``` r
 dat <- data.frame(x=x_predict, t(values))
-dat <- melt(dat, id="x")
+dat <- reshape2::melt(dat, id="x")
 
 gp <- data.frame(x_predict = x_predict, Ef = Ef, sigma = 2*sqrt(diag(Cf)) )
 
 
-fig2c <- ggplot(dat,aes(x=x,y=value)) +
+ggplot(dat,aes(x=x,y=value)) +
   geom_ribbon(data=gp, 
               aes(x=x_predict, y=Ef, ymin=Ef-sigma, ymax=Ef+sigma),
               fill="grey80") + # Var
-  geom_line(aes(color=variable)) + #REPLICATES
+  geom_line(aes(group=variable), alpha=0.3, col=rgb(0.7, 0.1, 0.4, 0.1)) + #REPLICATES
   geom_line(data=gp,aes(x=x_predict,y=Ef), size=1) + #MEAN
   geom_point(data=obs,aes(x=x,y=y)) +  #OBSERVED DATA
   scale_y_continuous(lim=c(-3,3), name="output, f(x)") +
   xlab("input, x")
 ```
 
-    ## Warning: Ignoring unknown aesthetics: y
+![](gp-manual-vs-greta_files/figure-gfm/unnamed-chunk-12-1.png)<!-- -->
+
+-----
+
+# greta
+
+Can we express the same operations in greta?
 
 ``` r
-fig2c
+library(tidyverse)
+library(greta)
+library(greta.gp)
 ```
 
-![](gp-manual-vs-greta_files/figure-gfm/unnamed-chunk-13-1.png)<!-- -->
+# Try greta with fixed parameters
 
-Note that unlike the previous case, the posterior no longer collapses
-completely around the neighborhood of the test points.
+Here I try to replicate the above results under ‘no additive noise’ by
+setting the noise term to (almost) zero. (trying `obs_sd = 0` causes the
+MCMC to fail to find initial values)
+
+``` r
+# kernel & GP
+y <- obs$y
+x <- obs$x
+
+# hyperparameters
+rbf_var <- 1
+rbf_len <- 1
+obs_sd <- 0.001
+
+# kernel & GP
+kernel <- rbf(rbf_len, rbf_var)
+f <- gp(x, kernel)
+
+# likelihood -- not clear how this influences f_plot?
+distribution(y)<- normal(f, obs_sd)
+
+# prediction
+f_plot <- project(f, x_predict)
+```
+
+``` r
+# fit the model by Hamiltonian Monte Carlo
+m <- model(f_plot)
+draws <- mcmc(m, chains = 1, one_by_one = TRUE)
+```
+
+Unfortunately, instead of causing the GP to collapse down only at the
+data points, like in the example above, this cause the GP samples to
+collapse entirely:
+
+``` r
+draws[[1]] %>% t() %>% as_tibble() %>% dplyr::select(1:200) %>% 
+  mutate(x = x_predict) %>% pivot_longer(-x)  %>%
+  ggplot(aes(x,value)) + 
+  geom_line(aes(group=name), alpha=0.3, col=rgb(0.7, 0.1, 0.4, 0.1)) +
+  geom_point(data = obs, aes(x,y))
+```
+
+![](gp-manual-vs-greta_files/figure-gfm/unnamed-chunk-16-1.png)<!-- -->
+
+# MCMC with greta
+
+``` r
+# kernel & GP
+y <- obs$y
+x <- obs$x
+
+# hyperparameters
+rbf_var <- lognormal(0, 1)
+rbf_len <- lognormal(0, 1)
+obs_sd <- lognormal(0, 1)
+
+# kernel & GP
+kernel <- rbf(rbf_len, rbf_var)
+f <- gp(x, kernel)
+
+# likelihood -- not clear how this influences f_plot?
+distribution(y)<- normal(f, obs_sd)
+
+# prediction
+f_plot <- project(f, x_predict)
+```
+
+``` r
+# fit the model by Hamiltonian Monte Carlo
+m <- model(f_plot, rbf_len, rbf_var, obs_sd)
+draws <- mcmc(m, chains = 1, one_by_one = TRUE)
+```
+
+``` r
+df <- draws[[1]] %>% as_tibble(.name_repair = "universal") 
+hyperpars <- df %>% dplyr::select(rbf_len, obs_sd, rbf_var)  
+posterior <- df %>% dplyr::select(-rbf_len, -obs_sd, -rbf_var)    
+
+hyperpars %>% colMeans()
+```
+
+    ##  rbf_len   obs_sd  rbf_var 
+    ## 1.084206 1.200977 1.562875
+
+``` r
+#hyperpars %>% gather() %>% ggplot(aes(x = value, fill=key)) + stat_density() + facet_wrap(~key)
+```
+
+``` r
+posterior %>% t() %>% as_tibble() %>% dplyr::select(1:200) %>% mutate(x = x_predict) %>% pivot_longer(-x)  %>%
+  ggplot(aes(x,value)) + 
+  geom_line(aes(group=name), alpha=0.3, col=rgb(0.7, 0.1, 0.4, 0.1)) +
+  geom_point(data = obs, aes(x,y))
+```
+
+![](gp-manual-vs-greta_files/figure-gfm/unnamed-chunk-20-1.png)<!-- -->

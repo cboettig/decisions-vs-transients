@@ -1,0 +1,10 @@
+name: Publish Document
+title:
+username:
+account: rpubs
+server: rpubs.com
+hostUrl: rpubs.com
+appId: https://api.rpubs.com/api/v1/document/543096/9cefa3db1b1b46b9b36ac8eec99f39c8
+bundleId: https://api.rpubs.com/api/v1/document/543096/9cefa3db1b1b46b9b36ac8eec99f39c8
+url: http://rpubs.com/cboettig/543096
+when: 1572370619.59182
