@@ -247,7 +247,7 @@ draws[[1]] %>% t() %>% as_tibble() %>% dplyr::select(1:200) %>%
 
 ```{r}
 # kernel & GP
-y <- obs$y
+y <- t(obs$y)
 x <- obs$x
 
 # hyperparameters
@@ -259,8 +259,13 @@ obs_sd <- lognormal(0, 1)
 kernel <- rbf(rbf_len, rbf_var)
 f <- gp(x, kernel)
 
-# likelihood -- not clear how this influences f_plot?
-distribution(y)<- normal(f, obs_sd)
+n <- length(x)
+## More explicit
+distribution(y) <- multivariate_normal(zeros(1, n), kernel(x, x) + diag(n) * obs_sd)
+
+## This is more generic, we could have any function here.  Most methods assume additive Gaussian
+## noise to be able to exploit analytical sampling of the GP
+#distribution(y)<- normal(f, obs_sd)
 
 # prediction
 f_plot <- project(f, x_predict)
@@ -268,26 +273,40 @@ f_plot <- project(f, x_predict)
 
 
 ```{r}
-# fit the model by Hamiltonian Monte Carlo
-m <- model(f_plot, rbf_len, rbf_var, obs_sd)
+# fit the model by Hamiltonian Monte Carlo over hyperparameters only, not sampling from the GP
+m <- model(rbf_len, rbf_var, obs_sd)
 draws <- mcmc(m, chains = 1, one_by_one = TRUE)
 ```
 
 ```{r}
 df <- draws[[1]] %>% as_tibble(.name_repair = "universal") 
 hyperpars <- df %>% dplyr::select(rbf_len, obs_sd, rbf_var)  
-posterior <- df %>% dplyr::select(-rbf_len, -obs_sd, -rbf_var)    
+#posterior <- df %>% dplyr::select(-rbf_len, -obs_sd, -rbf_var)    
 
-hyperpars %>% colMeans()
-#hyperpars %>% gather() %>% ggplot(aes(x = value, fill=key)) + stat_density() + facet_wrap(~key)
+posterior_means <- hyperpars %>% colMeans()
+posterior_means
+hyperpars %>% gather() %>% ggplot(aes(x = value, fill=key)) + stat_density() + facet_wrap(~key)
 ```
 
 
+And wow, we can do this math in greta...
+
 ```{r}
-posterior %>% t() %>% as_tibble() %>% dplyr::select(1:200) %>% mutate(x = x_predict) %>% pivot_longer(-x)  %>%
-  ggplot(aes(x,value)) + 
-  geom_line(aes(group=name), alpha=0.3, col=rgb(0.7, 0.1, 0.4, 0.1)) +
-  geom_point(data = obs, aes(x,y))
+cov <- kernel
+sigma.n <- posterior_means["obs_sd"]
+cov_xx_inv <- solve(cov(obs$x, obs$x) + sigma.n^2 * diag(1, length(obs$x)))
+Ef <- cov(x_predict, obs$x) %*% cov_xx_inv %*% greta_array(obs$y)
+Cf <- cov(x_predict, x_predict) - cov(x_predict, obs$x)  %*% cov_xx_inv %*% cov(obs$x, x_predict)
+```
+
+
+
+
+```{r}
+#posterior %>% t() %>% as_tibble() %>% dplyr::select(1:200) %>% mutate(x = x_predict) %>% pivot_longer(-x)  %>%
+#  ggplot(aes(x,value)) + 
+#  geom_line(aes(group=name), alpha=0.3, col=rgb(0.7, 0.1, 0.4, 0.1)) +
+#  geom_point(data = obs, aes(x,y))
 ```
 
 ```{r}
