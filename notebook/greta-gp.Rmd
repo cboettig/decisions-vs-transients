@@ -99,8 +99,11 @@ tibble(x,y) %>% ggplot(aes(x,y)) + geom_point()
 # kernel & GP
 y <- diff(ex$x)
 x <- ex$x[-n]
-ggplot(data.frame(x,y), aes(x,y)) + geom_point()
+obs <- data.frame(x,y)
+ggplot(obs, aes(x,y)) + geom_point()
+```
 
+```{r}
 # hyperparameters
 rbf_var <- lognormal(0, 1)
 rbf_len <- lognormal(0, 10)
@@ -114,35 +117,92 @@ f <- gp(x, kernel)
 distribution(y)<- normal(f, obs_sd)
 
 # prediction
+x_predict <- seq(0, 150, len=200)
 f_plot <- project(f, x_predict)
 ```
 
 
+
 ```{r}
-# fit the model by Hamiltonian Monte Carlo
-m <- model(f, rbf_len, rbf_var, obs_sd)
+# fit the model by Hamiltonian Monte Carlo over hyperparameters only, not sampling from the GP
+m <- model(rbf_len, rbf_var, obs_sd)
 draws <- mcmc(m, chains = 1, one_by_one = TRUE)
 ```
 
 ```{r}
 df <- draws[[1]] %>% as_tibble(.name_repair = "universal") 
-hyperpars <- df %>% dplyr::select(rbf_len, obs_sd, rbf_var)  
-posterior <- df %>% dplyr::select(-rbf_len, -obs_sd, -rbf_var)    
+readr::write_csv(df, "draws.csv.gz")
+hyperpars <- df %>% dplyr::select(rbf_len, obs_sd, rbf_var)
+posterior_means <- hyperpars %>% colMeans()
+posterior_means
+hyperpars %>% gather() %>% ggplot(aes(x = value, fill=key)) + stat_density() + facet_wrap(~key)
+```
 
-hyperpars %>% colMeans()
-#hyperpars %>% gather() %>% ggplot(aes(x = value, fill=key)) + stat_density() + facet_wrap(~key)
+
+
+```{r}
+cov <- kernel
+sigma.n <- posterior_means["obs_sd"]
+
+cov_xx_inv <- solve(cov(obs$x, obs$x) + sigma.n^2 * diag(1, length(obs$x)))
+Ef <- cov(x_predict, obs$x) %*% cov_xx_inv %*% greta_array(obs$y)
+Cf <- cov(x_predict, x_predict) - cov(x_predict, obs$x)  %*% cov_xx_inv %*% cov(obs$x, x_predict)
+
+
+Ef <- calculate(Ef, 
+                values = list(rbf_len = posterior_means["rbf_len"], 
+                              rbf_var = posterior_means["rbf_var"])) %>% as.numeric()
+Cf <- calculate(Cf, 
+                values = list(rbf_len = posterior_means["rbf_len"], 
+                              rbf_var = posterior_means["rbf_var"]))
 ```
 
 
 ```{r}
-posterior %>% t() %>% as_tibble() %>% dplyr::select(1:200) %>% mutate(x = x_predict) %>% pivot_longer(-x)  %>%
-  ggplot(aes(x,value)) + 
-  geom_line(aes(group=name), alpha=0.3, col=rgb(0.7, 0.1, 0.4, 0.1)) +
-  geom_point(data = obs, aes(x,y))
+## Theory/Analytic
+gp <- data.frame(x_predict = x_predict, Ef = Ef, sigma = 2*sqrt(diag(Cf)) )
+## Draws
+
+values <- MASS::mvrnorm(200, Ef, Cf)
+dat <- data.frame(x=x_predict, t(values)) %>%  pivot_longer(-x)
 ```
 
 ```{r}
+ggplot(dat,aes(x=x,y=value)) +
+  geom_ribbon(data=gp, 
+              aes(x=x_predict, y=Ef, ymin=Ef-sigma, ymax=Ef+sigma),
+              fill="grey80") + # Var
+  geom_line(aes(group=name), alpha=0.3, col=rgb(0.7, 0.1, 0.4, 0.1)) + #REPLICATES
+  geom_line(data=gp,aes(x=x_predict,y=Ef), size=1) + #MEAN
+  geom_point(data=obs,aes(x=x,y=y)) +  #OBSERVED DATA
+  scale_y_continuous(lim=c(-3,3), name="output, f(x)") +
+  xlab("input, x")
 ```
+
+## Forecast from the estimated process
+
+```{r}
+
+## recompute
+gp_forecast <- function(kernel, obs, x_t, steps){
+  
+  
+  cov_xx_inv <- solve(cov(obs$x, obs$x))
+Ef <- cov(x_predict, obs$x) %*% cov_xx_inv %*% obs$y
+Cf <- cov(x_predict, x_predict) - cov(x_predict, obs$x)  %*% cov_xx_inv %*% cov(obs$x, x_predict)
+  
+}
+
+
+## grid forecast: points in x_predict
+gp <- data.frame(x = x_predict, Ef = Ef, sigma = 2*sqrt(diag(Cf)) )
+
+```
+
+
+## Compute decisions from the estimated process
+
+
 
 
 

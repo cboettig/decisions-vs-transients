@@ -294,12 +294,40 @@ And wow, we can do this math in greta...
 ```{r}
 cov <- kernel
 sigma.n <- posterior_means["obs_sd"]
+
 cov_xx_inv <- solve(cov(obs$x, obs$x) + sigma.n^2 * diag(1, length(obs$x)))
 Ef <- cov(x_predict, obs$x) %*% cov_xx_inv %*% greta_array(obs$y)
 Cf <- cov(x_predict, x_predict) - cov(x_predict, obs$x)  %*% cov_xx_inv %*% cov(obs$x, x_predict)
+
+
+Ef <- calculate(Ef, 
+                values = list(rbf_len = posterior_means["rbf_len"], 
+                              rbf_var = posterior_means["rbf_var"])) %>% as.numeric()
+Cf <- calculate(Cf, 
+                values = list(rbf_len = posterior_means["rbf_len"], 
+                              rbf_var = posterior_means["rbf_var"]))
 ```
 
 
+```{r}
+## Theory/Analytic
+gp <- data.frame(x_predict = x_predict, Ef = Ef, sigma = 2*sqrt(diag(Cf)) )
+## Draws
+values <- mvrnorm(200, Ef, Cf)
+dat <- data.frame(x=x_predict, t(values)) %>%  pivot_longer(-x)
+```
+
+```{r}
+ggplot(dat,aes(x=x,y=value)) +
+  geom_ribbon(data=gp, 
+              aes(x=x_predict, y=Ef, ymin=Ef-sigma, ymax=Ef+sigma),
+              fill="grey80") + # Var
+  geom_line(aes(group=name), alpha=0.3, col=rgb(0.7, 0.1, 0.4, 0.1)) + #REPLICATES
+  geom_line(data=gp,aes(x=x_predict,y=Ef), size=1) + #MEAN
+  geom_point(data=obs,aes(x=x,y=y)) +  #OBSERVED DATA
+  scale_y_continuous(lim=c(-3,3), name="output, f(x)") +
+  xlab("input, x")
+```
 
 
 ```{r}

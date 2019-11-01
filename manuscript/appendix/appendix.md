@@ -108,7 +108,7 @@ system.time({
 ```
 
     ##    user  system elapsed 
-    ##   0.382   0.027   6.436
+    ##   1.186   0.094   9.490
 
 ``` r
 p_det$N <- 3e3
@@ -119,6 +119,7 @@ mean <- sim_data %>% group_by(t) %>% summarise(x = mean(x)) %>% mutate(reps = 1)
 ## Stochastic ensemble mean vs deterministic mean
 
 ``` r
+write_csv(sim_data, "../../data/ghost_sims.csv.gz")
 sim_data %>% group_by(reps) %>%
   sample_n(5e2) %>%
   ggplot(aes(t, x, group=reps)) + 
@@ -167,6 +168,8 @@ arima_forecast <- sim_data %>%
   filter(reps == lows[[1]]) %>% 
   select(t,x) %>%
   bind_cols(y)
+
+write_csv(arima_forecast, "../../data/arima_forecast.csv.gz")
 ```
 
 ``` r
@@ -176,7 +179,8 @@ train %>%
   ggplot(aes(t)) + 
   geom_line(aes(y=x)) +
   geom_line(aes(y=pred), lwd = 1, lty = 3, col = "red", data = test) + 
-  geom_ribbon(aes(y=pred, ymin=pred-se, ymax=pred+se), alpha = 0.4, fill = "red", data = test)  + 
+  geom_ribbon(aes(y=pred, ymin=pred-se, ymax=pred+se), 
+              alpha = 0.4, fill = "red", data = test)  + 
   geom_line(aes(y=x), data = test, lty = 2, col="blue") +
   xlim(0,3000) + ylab("x") + theme_minimal()
 ```
@@ -225,7 +229,7 @@ system.time({
     ## running 4 samplers in parallel, each on up to 6 cores
 
     ##    user  system elapsed 
-    ##  11.151   0.083  82.209
+    ##   9.881   0.178  77.263
 
 ``` r
 samples <-  
@@ -296,7 +300,9 @@ true_forecast <-
   mutate(t = t+2000) %>% 
   bind_rows(training_data) %>% 
   mutate(set = "true")
+```
 
+``` r
 predicted_forecast <- 
   posterior_sims %>% 
     mutate(t = t+2000) %>%
@@ -305,15 +311,18 @@ predicted_forecast <-
 ```
 
 ``` r
-bind_rows(predicted_forecast, true_forecast) %>% 
+model_forecast <- bind_rows(predicted_forecast, true_forecast)
+write_csv(model_forecast, "../../data/model_forecast.csv.gz")
+
+model_forecast %>% 
 #predicted_forecast %>%
   ggplot(aes(t,x)) +
-  geom_line(aes(group = interaction(reps, set), col = set), alpha = .05) + 
+  geom_line(aes(group = interaction(reps, set), col = set), alpha = .1) + 
   geom_line(data = training_data) + 
   facet_wrap(~set) + 
   scale_color_solarized()
 ```
 
-![](appendix_files/figure-gfm/unnamed-chunk-24-1.png)<!-- -->
+![](appendix_files/figure-gfm/unnamed-chunk-25-1.png)<!-- -->
 
 -----

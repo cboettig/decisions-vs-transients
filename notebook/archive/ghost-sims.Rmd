@@ -1,0 +1,165 @@
+---
+title: "simulation & inference of transients"
+author: "Carl Boettiger"
+date: "5/30/2019"
+output: github_document
+---
+  
+```{r message = FALSE}
+library(tidyverse)
+library(furrr)
+set.seed(12345)
+```
+  
+```{r}
+p <- list(r = .05, K = 200, Q = 5, H = 38, sigma = .02, a=2.3, N = 3e3, x0 = 20)
+growth <- function(x, p) x * p$r * (1 - x / p$K)
+consumption <- function(x, p) p$a * x ^ p$Q / (x^p$Q + p$H^p$Q)
+```
+
+```{r}
+theory <- 
+  function(p){
+    tibble(x= seq(0,p$K, length.out = 100)) %>%
+    mutate(growth = growth(x,p), 
+           consumption = consumption(x,p)) %>%
+    mutate(potential = - cumsum(growth - consumption)) %>%
+    gather(curve, y, -x, -potential) 
+}
+```
+
+```{r noisy_switch}
+theory(p) %>%
+  ggplot(aes(x, y, col=curve)) +
+  geom_line(lwd=1)
+```
+
+```{r}
+theory(p) %>%
+  ggplot(aes(x, potential)) + 
+  geom_line(lwd=1)
+```
+
+
+
+
+```{r}
+may <- function(x, p) x + growth(x,p) - consumption(x,p)
+#x + x * p$r * (1 - x / p$K)  - p$a * x ^ p$Q / (x ^ p$Q + p$H ^ p$Q)
+
+sim <- function(f, p){
+  x <- numeric(p$N)
+  x[1] <- p$x0
+  if(p$sigma > 0)
+    dBt <- rnorm(p$N, 0, p$sigma)
+  else
+    dBt <- numeric(p$N)
+  for(t in 1:(p$N-1)){
+    x[t+1] <- max(f(x[t], p) + x[t] * dBt[t],
+                  0)
+  }
+  data.frame(t = 1:p$N, x)
+}
+```
+
+
+
+```{r}
+p_det <- p
+p_det$sigma <- 0
+det <- sim(may,p_det) 
+det %>% ggplot(aes(t, x)) + geom_line() 
+```
+
+
+```{r}
+a <- c(2.25, 2.30, 2.305, 2.31)
+names(a) <- a
+p_det$N <- 1e4
+df <- map_dfr(a, function(a){
+  p_det$a <- a
+  sim(may, p_det)
+},
+.id = "a")
+
+
+df %>% ggplot(aes(t,x, col = a)) + geom_line() + coord_cartesian(xlim=c(0,5000))
+
+```
+
+
+
+
+
+
+
+
+```{r}
+plan("multisession")
+system.time({
+  df <- future_map_dfr(1:500, function(reps) sim(may, p), .id = "reps")
+})
+
+
+```
+
+
+
+```{r}
+p_det$N <- 3e3
+det <- sim(may,p_det) %>% mutate(reps=1)
+mean <- df %>% group_by(t) %>% summarise(x = mean(x)) %>% mutate(reps = 1)
+```
+
+
+## Stochastic ensemble mean vs deterministic mean
+
+```{r}
+df %>% ggplot(aes(t, x, group=reps)) + 
+  geom_line(alpha=0.05) +
+  geom_line(data = det, color = "blue") + 
+  geom_line(data = mean, color = "red")
+```
+
+
+
+
+```{r}
+df %>% write_csv("../data/reps.csv.xz")
+```
+
+
+## Deterministic system with initial conditions in neighborhood below ghost
+
+```{r}
+lambda <- function(x0, p){
+                      pars <- p
+                      p$x0 <- x0
+                      det_sim(may, p)
+                    }
+mu <- 0.02
+init <- mu + rnorm(100, 0, .02 * mu)
+df <- future_map_dfr(init, lambda, p = p, .id = "reps")
+
+
+df %>% ggplot(aes(t, x, group=reps)) + 
+  geom_line(alpha=0.1)
+```
+
+## Deterministic System with initial condition in neighborhood of ghost
+
+
+```{r}
+mu <- 0.55
+init <- mu + rnorm(100, 0, .02 * mu)
+df <- future_map_dfr(init, lambda, p = p, .id = "reps")
+
+
+
+df %>% ggplot(aes(t, x, group=reps)) + 
+  geom_line(alpha=0.1)
+```
+
+```{r}
+```
+

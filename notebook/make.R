@@ -1,19 +1,24 @@
 library(callr)
 
 
-p1 <- callr::r_bg(function() rmarkdown::render("notebook/ghost-sims.Rmd") )
+p1 <- callr::r_bg(function() rmarkdown::render("notebook/greta-gp.Rmd") )
 
-#  needs to wait for p1 to complete
-p2 <- callr::r_bg(function() rmarkdown::render("notebook/ghost-fit.Rmd") )
+p3 <- callr::r_bg(function() rmarkdown::render(here::here("manuscript/appendix/appendix.Rmd")) )
+
+
+
+p4 <- callr::r_bg(function() rmarkdown::render(here::here("notebook/complete-discrete-version.Rmd")),
+                  #env = c(LD_PRELOAD="libnvblas.so")
+                  )
+
+
 
 # greta tasks probably cannot run in parallel given current memory settings
-p3 <- callr::r_bg(function() rmarkdown::render("notebook/discrete-sims.Rmd") )
 
 
 
 p4 <- callr::r_bg(function() rmarkdown::render("notebook/may-outbreak-ghost.Rmd"),
                   env = c(LD_PRELOAD="libnvblas.so"))
-
 
 
 p5 <- callr::r_bg(function() rmarkdown::render("notebook/may-outbreak-ghost-2.Rmd") )
