@@ -278,7 +278,8 @@ data.frame(a = possible_a, probability = prior) %>%
 ![](complete-discrete-version_files/figure-gfm/unnamed-chunk-18-1.png)<!-- -->
 
 ``` r
-Tmax_learning <- 50
+set.seed(12345)
+Tmax_learning <- 500
 mdp_learning_ <- memoise::memoise(mdp_learning)
   learning_sim <- mdp_learning_(transition, reward, discount, 
                       x0 = x0, 
@@ -290,13 +291,17 @@ mdp_learning_ <- memoise::memoise(mdp_learning)
 ```
 
 ``` r
+saveRDS(learning_sim, "learning_sim.rds")
+```
+
+``` r
  learning_sim$df %>% 
   select(-value) %>% 
   gather(series, state, -time) %>% 
   ggplot(aes(time, states[state], color = series)) + geom_line()
 ```
 
-![](complete-discrete-version_files/figure-gfm/unnamed-chunk-20-1.png)<!-- -->
+![](complete-discrete-version_files/figure-gfm/unnamed-chunk-21-1.png)<!-- -->
 
 ``` r
  learning_sim$posterior %>% 
@@ -308,7 +313,7 @@ mdp_learning_ <- memoise::memoise(mdp_learning)
   geom_line()
 ```
 
-![](complete-discrete-version_files/figure-gfm/unnamed-chunk-21-1.png)<!-- -->
+![](complete-discrete-version_files/figure-gfm/unnamed-chunk-22-1.png)<!-- -->
 
 -----
 
@@ -346,7 +351,7 @@ no_switches %>%
   ggplot(aes(time, state)) + geom_point() + geom_path() 
 ```
 
-![](complete-discrete-version_files/figure-gfm/unnamed-chunk-25-1.png)<!-- -->
+![](complete-discrete-version_files/figure-gfm/unnamed-chunk-26-1.png)<!-- -->
 
 ``` r
 set.seed(12345)
@@ -356,7 +361,7 @@ switches  %>%
   ggplot(aes(time, state)) + geom_point() + geom_path() 
 ```
 
-![](complete-discrete-version_files/figure-gfm/unnamed-chunk-26-1.png)<!-- -->
+![](complete-discrete-version_files/figure-gfm/unnamed-chunk-27-1.png)<!-- -->
 
 ``` r
 set.seed(1234)
@@ -367,7 +372,7 @@ stable %>%
   ggplot(aes(time, state)) + geom_point() + geom_path() 
 ```
 
-![](complete-discrete-version_files/figure-gfm/unnamed-chunk-27-1.png)<!-- -->
+![](complete-discrete-version_files/figure-gfm/unnamed-chunk-28-1.png)<!-- -->
 
 ``` r
 ## Collect the data sets.  Use names.
@@ -439,4 +444,4 @@ samples %>%
   facet_wrap(~variable, scales = "free")
 ```
 
-![](complete-discrete-version_files/figure-gfm/unnamed-chunk-31-1.png)<!-- -->
+![](complete-discrete-version_files/figure-gfm/unnamed-chunk-32-1.png)<!-- -->

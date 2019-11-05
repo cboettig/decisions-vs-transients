@@ -284,7 +284,8 @@ data.frame(a = possible_a, probability = prior) %>%
 
 
 ```{r}
-Tmax_learning <- 50
+set.seed(12345)
+Tmax_learning <- 500
 mdp_learning_ <- memoise::memoise(mdp_learning)
   learning_sim <- mdp_learning_(transition, reward, discount, 
                       x0 = x0, 
@@ -296,6 +297,10 @@ mdp_learning_ <- memoise::memoise(mdp_learning)
 
 ```
 
+
+```{r}
+saveRDS(learning_sim, "learning_sim.rds")
+```
 
 ```{r}
  learning_sim$df %>% 

@@ -1,5 +1,8 @@
 library(callr)
 
+p4 <- callr::r_bg(function() rmarkdown::render(here::here("notebook/complete-discrete-version.Rmd"))
+                  #env = c(LD_PRELOAD="libnvblas.so")
+)
 
 p1 <- callr::r_bg(function() rmarkdown::render("notebook/greta-gp.Rmd") )
 
@@ -7,9 +10,6 @@ p3 <- callr::r_bg(function() rmarkdown::render(here::here("manuscript/appendix/a
 
 
 
-p4 <- callr::r_bg(function() rmarkdown::render(here::here("notebook/complete-discrete-version.Rmd")),
-                  #env = c(LD_PRELOAD="libnvblas.so")
-                  )
 
 
 
