@@ -55,7 +55,7 @@ Range of possible a that covers tipping in both directions. Belief is in
 a stable system while the reality is a transient (smaller `a`).
 
 ``` r
-true_a <- 27.4      ### 21.5
+true_a <- 27      ### 21.5
 believe_a <- 28.5 # 28.5   ### 22.5
 
 possible_a <- seq(2*true_a - believe_a, 2*believe_a - true_a, by = 0.2)
@@ -79,10 +79,10 @@ df <- map_dfr(possible_a,
 
 df %>%
   ggplot(aes(x, f)) + 
-    geom_point(aes(col = a), alpha = 0.1) + 
+    geom_point(aes(col = a), alpha = 0.8) + 
     geom_line(aes(lty = group), data = df %>% filter(a == true_a | a == believe_a), 
               lwd = 1, show.legend = FALSE) +
-    geom_hline(aes(yintercept = 0)) 
+    geom_hline(aes(yintercept = 0)) + scale_color_viridis_c()
 ```
 
 ![](complete-discrete-version_files/figure-gfm/unnamed-chunk-3-1.png)<!-- -->
@@ -143,7 +143,7 @@ bind_rows(true = true_distrib, believe = believe_distrib, .id = "model") %>%
 
 ``` r
 x0 <- which.min(abs(states - 5))
-Tmax <- 700
+Tmax <- 200
 ```
 
 ``` r
@@ -279,7 +279,7 @@ data.frame(a = possible_a, probability = prior) %>%
 
 ``` r
 set.seed(12345)
-Tmax_learning <- 500
+Tmax_learning <- 50
 mdp_learning_ <- memoise::memoise(mdp_learning)
   learning_sim <- mdp_learning_(transition, reward, discount, 
                       x0 = x0, 
@@ -418,17 +418,9 @@ estimate_posterior <- function(df){
 ```
 
 ``` r
-if(!file.exists("samples.tsv.gz")){ # Manually cache the slow step
-  
 samples <- examples %>% 
   group_by(series) %>% 
   group_modify(~estimate_posterior(.x))
-
-readr::write_tsv(samples, "samples.tsv.gz")
-
-} else {
-  samples <- readr::read_tsv("samples.tsv.gz")
-}
 ```
 
 ``` r
