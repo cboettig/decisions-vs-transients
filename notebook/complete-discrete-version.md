@@ -6,6 +6,8 @@ library(MDPtoolbox)
 library(mdplearning)
 library(expm)
 library(truncnorm)
+library(ggthemes)
+pal <- solarized_pal()(3)
 ```
 
 # Outbreak model
@@ -16,50 +18,54 @@ library(truncnorm)
 <!-- end list -->
 
 ``` r
-#damage <- 0.3
-#control <- 100
-#discount <- 0.99
-
-damage <- .5
-control <- 1
-endemic <- 50
-discount <- 0.999 # Note that dynamics are not on scale of years but ~ days
-e <- .4
+## Discrete version of the state space and action space
 n_s <- 121
 states <- seq(0, 120, length = n_s)
 actions <- seq(0, 120, length = n_s)
 
-p <- list(r = .8, K = 153, q = 2, b = 20, sigma = .02, a=2.3, x0 = 20)
 
+# Constants in the utility function
+damage <- .5
+control <- 1
+endemic <- 50
+discount <- 0.999 # Note that dynamics are not on scale of years but ~ days
+
+
+## Model constants -- used to compute transistion probabilities
+efficiency <- .4    
+p <- list(r = .8, K = 153, q = 2, b = 20, sigma = .02, x0 = 20) # fixed parameters
+```
+
+The ecological dynamics are given by @May1977’s consumer-resource model:
+
+``` r
 may <- function(a){  
   function(x, h = 0){ # May
-    y <- x - e * h
+    y <- x - efficiency * h
     pmax(
       ## controlling h is controlling the bifurcation point directly...
       y + y * p$r * (1 - y / p$K)  - a * y ^ p$q / (y ^ p$q + p$b ^ p$q),  
       0)
   }
 }
+```
 
-## safe state
-## 
-
+``` r
 reward_fn <- function(x,h) - (damage * pmax(x - endemic, 0)) ^ 2  - (control * h)
-# reward_fn <- function(x,h) - damage * (x / 100) ^ 2 - control * (h / 100) ^ 2
-#
-
-#reward_fn <- function(x,h) - damage * (x / max(states)) - control * h / max(actions) * x / max(states)
 ```
 
 Range of possible a that covers tipping in both directions. Belief is in
 a stable system while the reality is a transient (smaller `a`).
 
 ``` r
-true_a <- 27      ### 21.5
-believe_a <- 28.5 # 28.5   ### 22.5
+true_a <- 27      ### Weak ghost
+believe_a <- 28.5 ### Attractor
+
+ghost_a <- 27.4     ### Stronger ghost
 
 possible_a <- seq(2*true_a - believe_a, 2*believe_a - true_a, by = 0.2)
 true_i <- which.min(abs(possible_a - true_a))
+ghost_i <- which.min(abs(possible_a - ghost_a))
 ```
 
 ``` r
@@ -85,7 +91,7 @@ df %>%
     geom_hline(aes(yintercept = 0)) + scale_color_viridis_c()
 ```
 
-![](complete-discrete-version_files/figure-gfm/unnamed-chunk-3-1.png)<!-- -->
+![](complete-discrete-version_files/figure-gfm/unnamed-chunk-5-1.png)<!-- -->
 
 ``` r
 transition_matrix <- function(states, actions, f, sigma){
@@ -117,6 +123,7 @@ transition_matrix <- function(states, actions, f, sigma){
 ``` r
 m_true <- transition_matrix(states, actions, may(true_a), p$sigma)
 m_belief <- transition_matrix(states, actions, may(believe_a), p$sigma)
+m_ghost <- transition_matrix(states, actions, may(ghost_a), p$sigma)
 ```
 
 ``` r
@@ -135,7 +142,7 @@ bind_rows(true = true_distrib, believe = believe_distrib, .id = "model") %>%
   ggplot(aes(state,probability, col=model))  + geom_line(alpha=0.5) # + geom_bar(stat="identity")
 ```
 
-![](complete-discrete-version_files/figure-gfm/unnamed-chunk-6-1.png)<!-- -->
+![](complete-discrete-version_files/figure-gfm/unnamed-chunk-8-1.png)<!-- -->
 
 -----
 
@@ -184,7 +191,7 @@ tibble(state = states,
   ggplot(aes(state,action, color = model)) + geom_point(alpha=0.5) 
 ```
 
-![](complete-discrete-version_files/figure-gfm/unnamed-chunk-10-1.png)<!-- -->
+![](complete-discrete-version_files/figure-gfm/unnamed-chunk-12-1.png)<!-- -->
 
 Result experienced by incorrect belief: initial in-action followed by
 need for continued maintenance to prevent high-level outbreak:
@@ -204,7 +211,7 @@ df %>%
   geom_point() + geom_path() #+ 
 ```
 
-![](complete-discrete-version_files/figure-gfm/unnamed-chunk-12-1.png)<!-- -->
+![](complete-discrete-version_files/figure-gfm/unnamed-chunk-14-1.png)<!-- -->
 
 ``` r
   #facet_wrap(~name, scales="free_y", ncol=1)
@@ -226,7 +233,7 @@ df %>%
   geom_point() + geom_path()
 ```
 
-![](complete-discrete-version_files/figure-gfm/unnamed-chunk-13-1.png)<!-- -->
+![](complete-discrete-version_files/figure-gfm/unnamed-chunk-15-1.png)<!-- -->
 
 Optimal strategy knowing this is just a transient (will depend on
 discount rate):
@@ -243,7 +250,7 @@ df %>%
   geom_point() + geom_path()
 ```
 
-![](complete-discrete-version_files/figure-gfm/unnamed-chunk-14-1.png)<!-- -->
+![](complete-discrete-version_files/figure-gfm/unnamed-chunk-16-1.png)<!-- -->
 
 -----
 
@@ -260,7 +267,7 @@ models <- map(possible_a, function(a){
 transition <- models
 ```
 
-## a near ghost
+## a weak ghost
 
 ``` r
 wd <- sd(possible_a)
@@ -275,7 +282,7 @@ data.frame(a = possible_a, probability = prior) %>%
   geom_vline(aes(xintercept = believe_a), col="blue", lwd=1, lty=2) 
 ```
 
-![](complete-discrete-version_files/figure-gfm/unnamed-chunk-18-1.png)<!-- -->
+![](complete-discrete-version_files/figure-gfm/unnamed-chunk-20-1.png)<!-- -->
 
 ``` r
 set.seed(12345)
@@ -301,19 +308,121 @@ saveRDS(learning_sim, "learning_sim.rds")
   ggplot(aes(time, states[state], color = series)) + geom_line()
 ```
 
-![](complete-discrete-version_files/figure-gfm/unnamed-chunk-21-1.png)<!-- -->
+![](complete-discrete-version_files/figure-gfm/unnamed-chunk-23-1.png)<!-- -->
 
 ``` r
- learning_sim$posterior %>% 
-  data.frame(time = 1:Tmax_learning) %>%
-  filter(time %in% seq(1,Tmax_learning, by = 5)) %>%
+learning_sim$posterior %>% 
+  data.frame(time = 1:Tmax) %>%
+  filter(time %in% c(1,50)) %>%
   gather(param, probability, -time, factor_key =TRUE) %>% 
-  mutate(param = possible_a[as.integer(param)]) %>% 
-  ggplot(aes(param, probability, group = time, alpha = time)) + 
-  geom_line()
+  mutate(param = as.numeric(param)) %>% 
+  ggplot(aes(x = param, y = probability, group = time, alpha = time)) + 
+  geom_bar(stat="identity", position = "identity", show.legend = FALSE, fill=pal[1]) + 
+   ylim(0,0.3)
 ```
 
-![](complete-discrete-version_files/figure-gfm/unnamed-chunk-22-1.png)<!-- -->
+![](complete-discrete-version_files/figure-gfm/unnamed-chunk-24-1.png)<!-- -->
+
+-----
+
+True value is a stronger ghost:
+
+``` r
+set.seed(12345)
+Tmax_learning <- 50
+mdp_learning_ <- memoise::memoise(mdp_learning)
+  learning_sim <- mdp_learning_(transition, reward, discount, 
+                      x0 = x0, 
+                      Tmax = Tmax_learning, 
+                      true_transition = transition[[ghost_i]],
+                      model_prior = prior,
+                      type = "value iteration", 
+                      epsilon = 1e-2)
+```
+
+``` r
+saveRDS(learning_sim, "learning_sim2.rds")
+```
+
+``` r
+ learning_sim$df %>% 
+  select(-value) %>% 
+  gather(series, state, -time) %>% 
+  ggplot(aes(time, states[state], color = series)) + geom_line()
+```
+
+![](complete-discrete-version_files/figure-gfm/unnamed-chunk-27-1.png)<!-- -->
+
+``` r
+learning_sim$posterior %>% 
+  data.frame(time = 1:Tmax) %>%
+  filter(time %in% c(1,50)) %>%
+  gather(param, probability, -time, factor_key =TRUE) %>% 
+  mutate(param = as.numeric(param)) %>% 
+  ggplot(aes(x = param, y = probability, group = time, alpha = time)) + 
+  geom_bar(stat="identity", position = "identity", show.legend = FALSE, fill=pal[1]) + 
+   ylim(0,0.3)
+```
+
+![](complete-discrete-version_files/figure-gfm/unnamed-chunk-28-1.png)<!-- -->
+
+-----
+
+## a strong ghost, wide prior:
+
+``` r
+wd <- sd(possible_a)
+wide_prior <- dnorm(possible_a, believe_a, wd)
+wide_prior <- wide_prior / sum(wide_prior)
+```
+
+``` r
+data.frame(a = possible_a, probability = wide_prior) %>%
+  ggplot(aes(a,prior)) + geom_bar(stat="identity") +
+  geom_vline(aes(xintercept = true_a), col="red", lwd=1, lty=2) + 
+  geom_vline(aes(xintercept = believe_a), col="blue", lwd=1, lty=2) 
+```
+
+![](complete-discrete-version_files/figure-gfm/unnamed-chunk-30-1.png)<!-- -->
+
+``` r
+set.seed(12345)
+Tmax_learning <- 50
+mdp_learning_ <- memoise::memoise(mdp_learning)
+  learning_sim <- mdp_learning_(transition, reward, discount, 
+                      x0 = x0, 
+                      Tmax = Tmax_learning, 
+                      true_transition = transition[[ghost_i]],
+                      model_prior = wide_prior,
+                      type = "value iteration", 
+                      epsilon = 1e-2)
+```
+
+``` r
+saveRDS(learning_sim, "learning_sim3.rds")
+```
+
+``` r
+ learning_sim$df %>% 
+  select(-value) %>% 
+  gather(series, state, -time) %>% 
+  ggplot(aes(time, states[state], color = series)) + geom_line()
+```
+
+![](complete-discrete-version_files/figure-gfm/unnamed-chunk-33-1.png)<!-- -->
+
+``` r
+learning_sim$posterior %>% 
+  data.frame(time = 1:Tmax) %>%
+  filter(time %in% c(1,50)) %>%
+  gather(param, probability, -time, factor_key =TRUE) %>% 
+  mutate(param = as.numeric(param)) %>% 
+  ggplot(aes(x = param, y = probability, group = time, alpha = time)) + 
+  geom_bar(stat="identity", position = "identity", show.legend = FALSE, fill=pal[1]) + 
+   ylim(0,0.3)
+```
+
+![](complete-discrete-version_files/figure-gfm/unnamed-chunk-34-1.png)<!-- -->
 
 -----
 
@@ -351,7 +460,7 @@ no_switches %>%
   ggplot(aes(time, state)) + geom_point() + geom_path() 
 ```
 
-![](complete-discrete-version_files/figure-gfm/unnamed-chunk-26-1.png)<!-- -->
+![](complete-discrete-version_files/figure-gfm/unnamed-chunk-37-1.png)<!-- -->
 
 ``` r
 set.seed(12345)
@@ -361,7 +470,7 @@ switches  %>%
   ggplot(aes(time, state)) + geom_point() + geom_path() 
 ```
 
-![](complete-discrete-version_files/figure-gfm/unnamed-chunk-27-1.png)<!-- -->
+![](complete-discrete-version_files/figure-gfm/unnamed-chunk-38-1.png)<!-- -->
 
 ``` r
 set.seed(1234)
@@ -372,7 +481,7 @@ stable %>%
   ggplot(aes(time, state)) + geom_point() + geom_path() 
 ```
 
-![](complete-discrete-version_files/figure-gfm/unnamed-chunk-28-1.png)<!-- -->
+![](complete-discrete-version_files/figure-gfm/unnamed-chunk-39-1.png)<!-- -->
 
 ``` r
 ## Collect the data sets.  Use names.
@@ -436,4 +545,4 @@ samples %>%
   facet_wrap(~variable, scales = "free")
 ```
 
-![](complete-discrete-version_files/figure-gfm/unnamed-chunk-32-1.png)<!-- -->
+![](complete-discrete-version_files/figure-gfm/unnamed-chunk-43-1.png)<!-- -->
