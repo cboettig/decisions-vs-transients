@@ -24,11 +24,15 @@ knitr::opts_chunk$set(echo = FALSE, cache = 1,
                       fig.height=3.5, message = FALSE,
                       warning = FALSE)
 library(hrbrthemes)
-library(ggplot2)
-library(ggthemes)
 library(Cairo)
 library(extrafont)
 extrafont::loadfonts()
+
+
+library(ggplot2)
+library(ggthemes)
+library(ggtext) # devtools::install_github("clauswilke/ggtext")
+ggplot2::theme_set(hrbrthemes::theme_ipsum_rc())
 pal <- solarized_pal()(3)
 ```
 
@@ -37,11 +41,83 @@ library(tidyverse)   # plotting and data manipulation
 ```
 
 
-
-
 Long transients may be quite common features of the dynamics of ecological systems [@Hastings1994; @Hastings2018].  What implications does this have for our ability to predict and manage them?  One of the most intuitive implications for the existence of long transients in the risk in mistaking transient behavior for stable state behavior and the consequences of managing a system under this false conclusion.  The potential for this mistake is straightforward to demonstrate even under idealized conditions such as access to accurate, high frequency data and knowledge of the correct model structure. Decision-theoretic approaches to ecological management provide a more nuianced approach for dealing with uncertainty by explicitly considering the set of all actions available to the manager and the likely consequences of those actions over time. In this paper, I explore the ability of both passive and active adaptive management approaches to cope with the challenge of long transient dynamics.  My results underscore the challenge transients create for accurate model inference, but also show a potential way forward for accounting for the resulting uncertainty in a decision-theory framework. Examining the impact different prior beliefs have on adaptive management, I show how a precautionary principle emerges from the optimization.  This analysis also highlights the importance of stochasticity has for transient dynamics.
 
+## Model and Methods
 
+I consider a generic model of population dynamics which can exhibit phenomena such as bistability and a ghost attractor dynamics.  This model is amenable to interpretation in many ecological contexts (sensu @Levins1966 sacrificing precision to realism and generality), such as the collapse of a fish population, recovery of an endagered species, or the outbreak a pest.  To provide a more tangible context to frame our questions of ecological mangement, I will focus on the latter scenario of a pest outbreak.  In this scenario, we imagine a species such as the Pine bark beetle, (e.g. *Dendroctonus ponderosae*, @Harvey2014) whose recent boom in population has devastated much of Northern America's pine forests.  The model is a stochastic version of the consumer-resource model of @May1977,
+
+\begin{equation}
+X_{t+1} = X_t + \underbrace{X_t r \left(1 -\frac{X_t}{K} \right)}_{\textrm{logistic growth}}  - 
+\underbrace{\frac{a X_t ^ Q}{X_t^ Q + H ^ Q}}_{\textrm{saturating consumption}} + 
+\underbrace{\xi_t X_t}_{\textrm{environmental noise}} \label{model}
+\end{equation}
+
+Where $X_t$ is the population density of the focal species (the beetle, in our case).  The growth  rate of the species is determined by an intrinsic growth rate $r$ and carrying capacity $K$. The species is under mortality pressure from another species (the natural defences of trees, in our context) which has an S curve saturation which reaches its half maximum at $H$ and maximum rate of $a$.  $Q$ determines the steepness of the saturating response. The dynamics are subject to environmental white noise proportional to the population size, $\xi_t X_t$ [@Boettiger2018]. Model dynamics are illustrated in Figure 1. 
+
+
+```{r}
+## Model constants -- used to compute transistion probabilities
+efficiency <- .4    
+p <- list(r = .8, K = 153, q = 2, b = 20, sigma = .02, x0 = 20) # fixed parameters
+
+may <- function(a){  
+  function(x, h = 0){ # May
+    y <- x - efficiency * h
+    pmax(
+      ## controlling h is controlling the bifurcation point directly...
+      y + y * p$r * (1 - y / p$K)  - a * y ^ p$q / (y ^ p$q + p$b ^ p$q),  
+      0)
+  }
+}
+```
+
+```{r figure1, fig.cap="For both curves, r = 0.8, K = 153, Q = 2, H = 20."}
+c(true_a = 27,           ## Weak ghost
+  believe_a = 28.5) %>%  ## Attractor
+  map_dfr(function(a) tibble(x = states, f = may(a)(x,0) - x, a = a)) %>% 
+  mutate(group = as.character(a)) %>%
+  ggplot(aes(x, f)) + 
+    geom_line(aes(lty = group, col = group), lwd = 1) +
+    geom_hline(aes(yintercept = 0)) + 
+    labs(lty = "a", col = "a", y = bquote(X[t+1] - X[t]), x = bquote(X[t])) + 
+    scale_color_solarized()
+
+```
+
+
+
+Under appropriate choice of parameters, the model is bistable, with two stable equilibiria at non-zero population sizes -- a low, "endemic" state, and a much higher "outbreak" state.  In the context of our beetle outbreak question, we will imagine that this model describes the population growth of the beetle over a single season, emergign from some low density following winter die off and growing subject to both it's intrinsic growth rate ($r$) and available resources ($K$) and subject to saturating density-dependent mortality imposed by tree defenses. This saturating response and the resulting threshhold dynamics in the response of affected trees exhibited by this model is quite well motivated   [e.g.@Raffa2008]: affected trees respond to beetle attack by increasing production of resins which can pitch out beetles, inhibit attraction of flying beetles to the tree, and allow other inducible defenses to activate. Initially this results in the strengthening (concave up) portion of the S curve as other defences are induced by the attack.  However, as beetle density increases further, the tree begins to exhaust resources required to produce resin and its other defences, leading to a saturating response.  Low beetle densities are thus stable, kept in check by the increasingly strong response of healthy trees.  Meanwhile, if a tree is overwhelmed, it becomes habitat for spawning many more beetles, which saturate the defences of more trees, leading to the population explosion until beetle numbers reach a much larger stable state by nearly exhausting avaliable tree habitat $K$ [@Harvey2014].    
+
+Thus our simple dynamical model from \eqref{model} captures the qualitative processes and dynamics expected in the beetle outbreak system. Bear in mind that this model is not intended to be a precise, quantitive match that could be fit directly to data, but rather, a theoretical tool to better explore the consequences of this behavior -- a realistic reflection of the process, but also simple enough to generalize to other systems dominated by similar nonlinear dynamics which can drive these threshold responses.
+
+We also observe that by decreasing $a$, the lower stable point vanishes, but the rate of change of the system (e.g. the vertical axis, Figure 1) is still small in magnitude, and thus dynamics near this region move slowly.  This is a simple example of what @Hastings2018 has dubbed a "Ghost Attractor" -- the attractor vanishes at the fold bifurcation, but it's effects can still be felt and observed.  This could result from a weakened ability of the trees to respond to attack, which could result from additional stress such as prolonged drought or fire, both potentially intensified under changing climate.  
+
+
+
+### Management model
+
+
+
+
+
+
+
+
+
+
+```{r}
+## Discrete version of the state space and action space
+n_s <- 121
+states <- seq(0, 120, length = n_s)
+actions <- seq(0, 120, length = n_s)
+# Constants in the utility function
+damage <- .5
+control <- 1
+endemic <- 50
+discount <- 0.999 # Note that dynamics are not on scale of years but ~ days
+reward_fn <- function(x,h) - (damage * pmax(x - endemic, 0)) ^ 2  - (control * h)
+```
 
 
 
