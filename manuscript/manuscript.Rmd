@@ -53,7 +53,7 @@ X_{t+1} = X_t + \underbrace{X_t r \left(1 -\frac{X_t}{K} \right)}_{\textrm{logis
 \underbrace{\xi_t X_t}_{\textrm{environmental noise}} \label{model}
 \end{equation}
 
-Where $X_t$ is the population density of the focal species (the beetle, in our case).  The growth  rate of the species is determined by an intrinsic growth rate $r$ and carrying capacity $K$. The species is under mortality pressure from another species (the natural defences of trees, in our context) which has an S curve saturation which reaches its half maximum at $H$ and maximum rate of $a$.  $Q$ determines the steepness of the saturating response. The dynamics are subject to environmental white noise proportional to the population size, $\xi_t X_t$ [@Boettiger2018]. Model dynamics are illustrated in Figure 1. 
+Where $X_t$ is the population density of the focal species (the beetle, in our case).  The growth  rate of the species is determined by an intrinsic growth rate $r$ and carrying capacity $K$. The species is under mortality pressure from another species (the natural defences of trees, in our context) which has an S curve saturation which reaches its half maximum at $H$ and maximum rate of $a$.  $Q$ determines the steepness of the saturating response. The dynamics are subject to environmental white noise proportional to the population size, $\xi_t X_t$ [@Boettiger2018]. Model dynamics are illustrated in Figure 1 under two different parameter choices for the saturation response $a$: one which corresponds to a ghost attractor and one to a bistable system.
 
 
 ```{r}
@@ -72,15 +72,14 @@ may <- function(a){
 }
 ```
 
-```{r figure1, fig.cap="For both curves, r = 0.8, K = 153, Q = 2, H = 20."}
-c(true_a = 27,           ## Weak ghost
-  believe_a = 28.5) %>%  ## Attractor
-  map_dfr(function(a) tibble(x = states, f = may(a)(x,0) - x, a = a)) %>% 
-  mutate(group = as.character(a)) %>%
+```{r figure1, fig.cap="Change in population size $X_{t+1} - X_t = f(X_t)$. Equilibria occur when the change curve crosses zero, stable points arise at crossings with negative slopes, unstable equilibria have positive slopes.  By changing parameter a, the system goes from bistable (red, a = 28.5) to a ghost attractor (blue, a = 27). For both curves, r = 0.8, K = 153, Q = 2, H = 20."}
+c(`ghost attractor` = 27,           
+  `bistable attractor` = 28.5) %>%
+  map_dfr(function(a) tibble(x = states, f = may(a)(x,0) - x, a = a), .id = "scenario") %>% 
   ggplot(aes(x, f)) + 
-    geom_line(aes(lty = group, col = group), lwd = 1) +
+    geom_line(aes(lty = scenario, col = scenario), lwd = 1) +
     geom_hline(aes(yintercept = 0)) + 
-    labs(lty = "a", col = "a", y = bquote(X[t+1] - X[t]), x = bquote(X[t])) + 
+    labs(y = bquote(X[t+1] - X[t]), x = bquote(X[t])) + 
     scale_color_solarized()
 
 ```
@@ -93,17 +92,7 @@ Thus our simple dynamical model from \eqref{model} captures the qualitative proc
 
 We also observe that by decreasing $a$, the lower stable point vanishes, but the rate of change of the system (e.g. the vertical axis, Figure 1) is still small in magnitude, and thus dynamics near this region move slowly.  This is a simple example of what @Hastings2018 has dubbed a "Ghost Attractor" -- the attractor vanishes at the fold bifurcation, but it's effects can still be felt and observed.  This could result from a weakened ability of the trees to respond to attack, which could result from additional stress such as prolonged drought or fire, both potentially intensified under changing climate.  
 
-
-
-### Management model
-
-
-
-
-
-
-
-
+Figure 2 illustrates several simulations from the model, starting from a low density, under both the scenario of a stable endemic state and a ghost attractor.  Note that it can in general be quite difficult to distinguish dynamics of the ghost from the dynamics of the stable attractor.  
 
 
 ```{r}
@@ -111,14 +100,208 @@ We also observe that by decreasing $a$, the lower stable point vanishes, but the
 n_s <- 121
 states <- seq(0, 120, length = n_s)
 actions <- seq(0, 120, length = n_s)
+```
+
+```{r}
+transition_matrix <- function(states, actions, f, sigma){
+    n_s <- length(states)
+    n_a <- length(actions)
+    transition <- array(0, dim = c(n_s, n_s, n_a))
+    for(i in 1:n_a){
+      for (k in 1:n_s) {
+          nextpop <- f(states[k], actions[i])
+          if (nextpop <= 0) {
+            x  <- c(1, rep(0, n_s - 1))
+          } else {
+            x <- truncnorm::dtruncnorm(states, 0, max(states), nextpop, sigma * nextpop)
+            if(sum(x) <= 0){ 
+              x  <- c(1, rep(0, n_s - 1))
+            } else {
+              x <- x / sum(x)
+            }
+          }
+          transition[k, , i] <- x
+      }
+  }
+  if(any(is.na(transition))) stop("error creating transition matrix")
+transition
+}
+```
+
+```{r}
+P_ghost <- transition_matrix(states, actions, may(27.4), p$sigma)
+P_bistable <- transition_matrix(states, actions, may(27.6), p$sigma)
+```
+
+
+```{r}
+## `actions` is an argument of indices, not necessarily the action values themselves 
+sim <- function (transition,  x0, Tmax, action = rep(1, Tmax)){
+    n_states <- dim(transition)[2]
+    state <- numeric(Tmax + 1)
+    state[1] <- x0
+    time <- 1:Tmax
+    for (t in time) {
+        state[t + 1] <- base::sample(1:n_states, 
+                               1, 
+                               prob = transition[state[t], , action[t]])
+    }
+    data.frame(time = 1:Tmax, state = state[time])
+}
+```
+
+
+```{r}
+x0 <- which.min(abs(states - p$x0))
+Tmax <- 400
+set.seed(1234)
+reps <- 50
+ghost_sim <- map_dfr(1:reps, function(i)
+  sim(P_ghost, x0, Tmax)  %>% mutate(state = states[state], scenario = "ghost"),
+  .id = "rep")
+bistable_sim <- map_dfr(1:reps, function(i)
+  sim(P_bistable, x0, Tmax)  %>% mutate(state = states[state], scenario = "bistable"),
+  .id = "rep")
+
+bind_rows(ghost_sim, bistable_sim) %>%
+  ggplot(aes(time, state, group = interaction(rep, scenario), col= scenario)) + 
+  geom_line(alpha=0.3) + scale_color_solarized() + facet_wrap(~scenario)
+```
+
+### Management model
+
+To properly understand the consequences transient dynamics have for management, we must first be more explicit about both the management objectives and potential management actions.  For simplicity, I will imagine a manager has the option to apply a direct mortality to the beetle larvae prior to recruitment, e.g. by spraying at some given intensity. Thus the action space is defined by some measure of spraying effort between 0% and 100%.  The management objectives are defined by a utility function, which trades off the costs of control with the costs of damage due to the outbreak.  Here I assume linearly increasing cost of control (fixed price per unit spraying). Below an endemic population size $X_0$ I assume damage (e.g. no tree mortality) is minimal, and then increases quadratically with increasing beetle density; that is, the instantaneous utility of state with beetle density $X_t$ and taking action $A_t$ is
+
+\begin{equation}
+U(X_t, A_t) = \underbrace{ - d \max\left(X_t - X_0, 0\right)^2}_{\textrm{damage}} - \underbrace{c A_t}_{control} \label{utility}
+\end{equation}
+
+The manager's objective is to select the sequence of actions $A_t \in \mathbf{A}$ which maximize the net expected discounted ($\delta$) utility, 
+
+$$\max_{A_t \in \mathbf{A}} \sum_t \delta^t U(X_t, A_t)$$
+where the evolution of $X_t$ is determined by Eq \eqref{model}. Because \eqref{model} is Markovian in $X_t$ (depending only on $X_t$ and no lagged terms),  this sequential decision problem is known as a Markov Decision Process, or MDP.  By discritizing \eqref{model} to a finite grid of possible states, we can represent the model as a transition matrix between possible states (population sizes) and solve the problem using Stochastic Dynamic Programming (SDP) [@Marescot2013].
+
+
+```{r}
 # Constants in the utility function
 damage <- .5
 control <- 1
 endemic <- 50
 discount <- 0.999 # Note that dynamics are not on scale of years but ~ days
 reward_fn <- function(x,h) - (damage * pmax(x - endemic, 0)) ^ 2  - (control * h)
+
+reward <- array(dim=c(length(states), length(actions)))
+for(i in 1:length(states)){
+  for(j in 1:length(actions)){
+    reward[i,j] <- reward_fn(states[i], actions[j])
+  }
+}
 ```
 
+
+## Optimal Planning under transient dynamics vs stable state dynamics
+
+First, I will consider the case that in which the manager has been able to accurately infer the dynamics (i.e. correctly estimate the parameters of Eq~\eqref{1}), and assuming the model structure postulated \eqref{1} is correct.  The optimal strategy determined by SDP can be represented as a "policy" function $p(X)$, indicating for each possible state $X$ what the optimal action $\hat A = p(X)$ would be.  Figure 3 displays the numerically computed optimal policy for the system with only a transient.  Though the models differ by only a small amount in a single parameter, because one model corresponds to a system with only a ghost attractor while the other has a stable state attractor, the resulting optimal policy solutions differ significantly.  Intuitively, in the system with stable state dynamics, the manager does not implement any control at low levels, where the presence of the lower stable state will constrain the beetle population to acceptable levels.  Once that lower stable state becomes only a ghost attractor, the optimal solution targets elimination of the beetle even at low densities.  Consequently, the optimal response becomes tightly dependent on our knowledge of the dynamics. 
+
+
+```{r}
+soln_ghost <- mdplearning::mdp_compute_policy(list(P_ghost), reward, discount, max_iter = 1e4, epsilon = 1e-2)
+soln_bistable <-mdplearning::mdp_compute_policy(list(P_bistable), reward, discount, max_iter = 1e4, epsilon = 1e-2)
+```
+
+
+```{r}
+tibble(state = states,
+       ghost = actions[soln_ghost$policy],
+       bistable =  actions[soln_bistable$policy]
+       ) %>%
+  pivot_longer(c(ghost, bistable), 
+               names_to="model",
+               values_to = "action") %>%
+  ggplot(aes(state,action, color = model)) + 
+  geom_point(alpha=0.6) + 
+  scale_color_solarized()
+```
+
+## Planning over uncertainty
+
+
+The transition matrix is an expression of conditional probability $P(X_{t+1} | X_t,  A_t)$, the probability that a system in state $X_t$ will transition to state $X_{t+1}$ in the next time interval if the manager takes action $A_t$.  If we have $n$ possible states and $m$ possible actions, we have $m$ $n \by n$ matrices for the possible transitions.  The transistion matrix also depends on our knowledge or estimates of the parameters of \eqref{model}. We can represent uncertainty over the models and their parameters as uncertainties as conditional on the model, $M_i$, so that the transistion matrix must then be marganlized over the set of possible models: $$P(X_{t+1} | X_t,  A_t) = \sum_{i} P(X_{t+1} | X_t,  A_t, M_i) P(M_i)$$
+
+
+
+```{r}
+soln_dist <- mdplearning::mdp_compute_policy(list(P_ghost, P_bistable), reward, discount, 
+                                             model_prior = c(0.5, 0.5),
+                                             max_iter = 1e4, epsilon = 1e-2)
+
+tibble(state = states,
+       action = actions[soln_dist$policy])  %>% 
+  ggplot(aes(state, action)) + geom_point()
+```
+
+```{r}
+set.seed(123456)
+Tmax <- 50
+df <- mdp_planning(P_ghost, reward, discount, 
+                   policy = soln_dist$policy,
+                   x0 = x0, Tmax = Tmax)
+
+df %>% 
+  mutate(state = states[state], action = actions[action] * 5) %>% 
+  select(-obs,-value) %>%
+  pivot_longer(-time) %>%
+  ggplot(aes(time, value, col=name)) + 
+  geom_point() + geom_path()
+```
+
+
+
+
+## Adaptive management
+
+
+
+This probability thus depends on our prior belief that model $i$ is true, $P(M_i)$.  Not only does this allow our manager to make her decision in to reflect uncertainty over models, but it also suggests that having made that decision and observed the outcomes, the manager can update her belief over possible models according to Bayes Rule, 
+
+$$P(M_i | X_{t+1} ) = \frac{P(X_{t+1} | M_i ) P(M_i)}{P(X_{t+1})}$$
+that is, the optimal manager not only plans over the uncertainty, but also learns which model is most likely to be correct over the course of management.  
+
+
+
+```{r}
+set.seed(123456)
+Tmax <- 50
+learning <- mdp_learning(list(P_ghost, P_bistable), reward, discount, 
+                   model_prior = c(0.5, 0.5),
+                   x0 = x0, Tmax = Tmax,
+                  true_transition = P_ghost,
+                  max_iter = 1e4, epsilon = 1e-2)
+                  
+
+```
+
+
+
+```{r}
+ learning_sim$df %>% 
+  select(-value) %>% 
+  gather(series, state, -time) %>% 
+  ggplot(aes(time, states[state], color = series)) + geom_line()
+```
+
+
+
+```{r}
+learning_sim$posterior %>% 
+  data.frame(time = 1:Tmax) %>%
+  filter(time %in% c(1,50)) %>%
+  gather(param, probability, -time, factor_key =TRUE) %>% 
+  mutate(param = as.numeric(param)) %>% 
+  ggplot(aes(x = param, y = probability, group = time, alpha = time)) + 
+  geom_bar(stat="identity", position = "identity", show.legend = FALSE, fill=pal[1]) + 
+   ylim(0,0.3)
+```
 
 
 ## Long transients when the underlying model is not known
