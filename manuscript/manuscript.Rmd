@@ -12,7 +12,7 @@ address:
 abstract: |
   I explore the impact of long transient dynamics for model inference and optimal
 journal: Theoretical ecology
-layout: 5p
+layout: 3p
 bibliography: refs.bib
 output: rticles::elsevier_article
 
@@ -38,6 +38,7 @@ pal <- solarized_pal()(3)
 
 ```{r message = FALSE}
 library(tidyverse)   # plotting and data manipulation
+library(mdplearning)
 ```
 
 
@@ -57,9 +58,16 @@ Where $X_t$ is the population density of the focal species (the beetle, in our c
 
 
 ```{r}
+## Discrete version of the state space and action space
+n_s <- 121
+states <- seq(0, 120, length = n_s)
+actions <- seq(0, 120, length = n_s)
+```
+
+```{r}
 ## Model constants -- used to compute transistion probabilities
 efficiency <- .4    
-p <- list(r = .8, K = 153, q = 2, b = 20, sigma = .02, x0 = 20) # fixed parameters
+p <- list(r = .8, K = 153, q = 2, b = 20, sigma = .05, x0 = 20) # fixed parameters
 
 may <- function(a){  
   function(x, h = 0){ # May
@@ -95,12 +103,6 @@ We also observe that by decreasing $a$, the lower stable point vanishes, but the
 Figure 2 illustrates several simulations from the model, starting from a low density, under both the scenario of a stable endemic state and a ghost attractor.  Note that it can in general be quite difficult to distinguish dynamics of the ghost from the dynamics of the stable attractor.  
 
 
-```{r}
-## Discrete version of the state space and action space
-n_s <- 121
-states <- seq(0, 120, length = n_s)
-actions <- seq(0, 120, length = n_s)
-```
 
 ```{r}
 transition_matrix <- function(states, actions, f, sigma){
@@ -129,8 +131,9 @@ transition
 ```
 
 ```{r}
-P_ghost <- transition_matrix(states, actions, may(27.4), p$sigma)
-P_bistable <- transition_matrix(states, actions, may(27.6), p$sigma)
+P_ghost <- transition_matrix(states, actions, may(27.2), p$sigma)
+P_weak_attractor <- transition_matrix(states, actions, may(28), p$sigma)
+P_bistable <- transition_matrix(states, actions, may(28), p$sigma)
 ```
 
 
@@ -153,14 +156,14 @@ sim <- function (transition,  x0, Tmax, action = rep(1, Tmax)){
 
 ```{r}
 x0 <- which.min(abs(states - p$x0))
-Tmax <- 400
-set.seed(1234)
+Tmax <- 200
+set.seed(12345)
 reps <- 50
 ghost_sim <- map_dfr(1:reps, function(i)
   sim(P_ghost, x0, Tmax)  %>% mutate(state = states[state], scenario = "ghost"),
   .id = "rep")
 bistable_sim <- map_dfr(1:reps, function(i)
-  sim(P_bistable, x0, Tmax)  %>% mutate(state = states[state], scenario = "bistable"),
+  sim(P_weak_attractor, x0, Tmax)  %>% mutate(state = states[state], scenario = "bistable"),
   .id = "rep")
 
 bind_rows(ghost_sim, bistable_sim) %>%
@@ -206,11 +209,15 @@ First, I will consider the case that in which the manager has been able to accur
 
 ```{r}
 soln_ghost <- mdplearning::mdp_compute_policy(list(P_ghost), reward, discount, max_iter = 1e4, epsilon = 1e-2)
-soln_bistable <-mdplearning::mdp_compute_policy(list(P_bistable), reward, discount, max_iter = 1e4, epsilon = 1e-2)
+soln_bistable <-mdplearning::mdp_compute_policy(list(P_bistable), reward, discount, max_iter = 1e4, epsilon = 1e-4)
+
+#soln_ghost <-MDPtoolbox::mdp_value_iteration(P_ghost, reward, discount, max_iter = 5e3, epsilon = 1e-5)
+
 ```
 
 
 ```{r}
+## With more noise, these are more similar.  With smaller noise, the ghost policy remains aggressive over a larger range
 tibble(state = states,
        ghost = actions[soln_ghost$policy],
        bistable =  actions[soln_bistable$policy]
@@ -226,35 +233,65 @@ tibble(state = states,
 ## Planning over uncertainty
 
 
-The transition matrix is an expression of conditional probability $P(X_{t+1} | X_t,  A_t)$, the probability that a system in state $X_t$ will transition to state $X_{t+1}$ in the next time interval if the manager takes action $A_t$.  If we have $n$ possible states and $m$ possible actions, we have $m$ $n \by n$ matrices for the possible transitions.  The transistion matrix also depends on our knowledge or estimates of the parameters of \eqref{model}. We can represent uncertainty over the models and their parameters as uncertainties as conditional on the model, $M_i$, so that the transistion matrix must then be marganlized over the set of possible models: $$P(X_{t+1} | X_t,  A_t) = \sum_{i} P(X_{t+1} | X_t,  A_t, M_i) P(M_i)$$
+The transition matrix is an expression of conditional probability $P(X_{t+1} | X_t,  A_t)$, the probability that a system in state $X_t$ will transition to state $X_{t+1}$ in the next time interval if the manager takes action $A_t$.  If we have $n$ possible states and $m$ possible actions, we have $m \phantom{\cdot} n \times n$ matrices for the possible transitions.  The transistion matrix also depends on our knowledge or estimates of the parameters of \eqref{model}. We can represent uncertainty over the models and their parameters as uncertainties as conditional on the model, $M_i$, so that the transistion matrix must then be marganlized over the set of possible models: $$P(X_{t+1} | X_t,  A_t) = \sum_{i} P(X_{t+1} | X_t,  A_t, M_i) P(M_i)$$
 
 
 
 ```{r}
-soln_dist <- mdplearning::mdp_compute_policy(list(P_ghost, P_bistable), reward, discount, 
+fifty_fifty <- mdplearning::mdp_compute_policy(list(P_ghost, P_bistable), reward, discount, 
                                              model_prior = c(0.5, 0.5),
                                              max_iter = 1e4, epsilon = 1e-2)
 
+seventy_thirty <- mdplearning::mdp_compute_policy(list(P_ghost, P_bistable), reward, discount, 
+                                             model_prior = c(0.7, 0.3),
+                                             max_iter = 1e4, epsilon = 1e-2)
+
+```
+
+```{r eval=FALSE}
+## Figure not shown -- intermediate prior gives an intermediate policy
 tibble(state = states,
-       action = actions[soln_dist$policy])  %>% 
-  ggplot(aes(state, action)) + geom_point()
+       action = actions[fifty_fifty$policy])  %>% 
+  ggplot(aes(state, action)) + geom_point() + 
+  geom_vline(aes(xintercept = states[x0]))
 ```
 
 ```{r}
-set.seed(123456)
-Tmax <- 50
-df <- mdp_planning(P_ghost, reward, discount, 
-                   policy = soln_dist$policy,
-                   x0 = x0, Tmax = Tmax)
 
-df %>% 
-  mutate(state = states[state], action = actions[action] * 5) %>% 
-  select(-obs,-value) %>%
-  pivot_longer(-time) %>%
-  ggplot(aes(time, value, col=name)) + 
-  geom_point() + geom_path()
+## Rather stochastic in realization space, should consider ensembles instead...
+reps <- 10
+Tmax <- 60
+set.seed(123456)
+sim_ghost <- map_dfr(1:reps, function(i)
+                   mdp_planning(P_ghost, reward, discount, 
+                   policy = soln_ghost$policy,
+                   x0 = x0, Tmax = Tmax), .id = "reps")
+sim_bistable <- map_dfr(1:reps, function(i)
+                   mdp_planning(P_ghost, reward, discount, 
+                   policy = soln_bistable$policy,
+                   x0 = x0, Tmax = Tmax), .id = "reps")
+sim_fiftyfifty <-  map_dfr(1:reps, function(i)
+                   mdp_planning(P_ghost, reward, discount, 
+                   policy = fifty_fifty$policy,
+                   x0 = x0, Tmax = Tmax), .id = "reps")
+sim_seventythirty <- map_dfr(1:reps, function(i)
+                   mdp_planning(P_ghost, reward, discount, 
+                   policy = seventy_thirty$policy,
+                   x0 = x0, Tmax = Tmax), .id = "reps")
+
 ```
 
+```{r}
+ bind_rows(ghost = sim_ghost, 
+           bistable = sim_bistable, 
+           fifty_fifty = sim_fiftyfifty, 
+           seventy_thirty = sim_seventythirty, .id = "prior")  %>% 
+  mutate(state = states[state], action = actions[action]) %>% 
+  select(-obs,-value) %>%
+  pivot_longer(c(-time, -prior, -reps)) %>%
+  ggplot(aes(time, value, group = interaction(name, reps), col=name)) + 
+  geom_path(alpha=0.5) + facet_wrap(~prior)
+```
 
 
 
@@ -270,7 +307,7 @@ that is, the optimal manager not only plans over the uncertainty, but also learn
 
 
 ```{r}
-set.seed(123456)
+set.seed(12345)
 Tmax <- 50
 learning <- mdp_learning(list(P_ghost, P_bistable), reward, discount, 
                    model_prior = c(0.5, 0.5),
@@ -284,7 +321,7 @@ learning <- mdp_learning(list(P_ghost, P_bistable), reward, discount,
 
 
 ```{r}
- learning_sim$df %>% 
+ learning$df %>% 
   select(-value) %>% 
   gather(series, state, -time) %>% 
   ggplot(aes(time, states[state], color = series)) + geom_line()
@@ -293,16 +330,19 @@ learning <- mdp_learning(list(P_ghost, P_bistable), reward, discount,
 
 
 ```{r}
-learning_sim$posterior %>% 
+model_names <- c("Ghost", "Bistable")
+learning$posterior %>% 
   data.frame(time = 1:Tmax) %>%
-  filter(time %in% c(1,50)) %>%
+  filter(time %in% floor(seq(1,10, length.out=5))) %>%
   gather(param, probability, -time, factor_key =TRUE) %>% 
-  mutate(param = as.numeric(param)) %>% 
+  mutate(param = model_names[as.integer(param)]) %>% 
   ggplot(aes(x = param, y = probability, group = time, alpha = time)) + 
-  geom_bar(stat="identity", position = "identity", show.legend = FALSE, fill=pal[1]) + 
-   ylim(0,0.3)
+  geom_bar(stat="identity", position = "identity", show.legend = FALSE, fill=pal[1])
 ```
 
+
+```{r}
+```
 
 ## Long transients when the underlying model is not known
 
