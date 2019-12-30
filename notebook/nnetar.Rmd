@@ -1,0 +1,144 @@
+---
+author: "Carl Boettiger"
+institute: "UC Berkeley"
+date: "`r Sys.Date()`"
+output: github_document
+---
+
+
+```{r setup, include=FALSE}
+
+library(tidyverse)
+library(fable)
+library(ggthemes)
+pal <- solarized_pal()(6)
+
+
+```
+
+
+
+```{r}
+n_s <- 121
+states <- seq(0, 120, length = n_s)
+actions <- seq(0, 120, length = n_s)
+
+## Model constants -- used to compute transistion probabilities
+efficiency <- .4    
+p <- list(r = .8, K = 153, q = 2, b = 20, sigma = .05, x0 = 20) # fixed parameters
+
+may <- function(a){  
+  function(x, h = 0){ # May
+    y <- x - efficiency * h
+    pmax(
+      ## controlling h is controlling the bifurcation point directly...
+      y + y * p$r * (1 - y / p$K)  - a * y ^ p$q / (y ^ p$q + p$b ^ p$q),  
+      0)
+  }
+}
+```
+
+```{r}
+transition_matrix <- function(states, actions, f, sigma){
+    n_s <- length(states)
+    n_a <- length(actions)
+    transition <- array(0, dim = c(n_s, n_s, n_a))
+    for(i in 1:n_a){
+      for (k in 1:n_s) {
+          nextpop <- f(states[k], actions[i])
+          if (nextpop <= 0) {
+            x  <- c(1, rep(0, n_s - 1))
+          } else {
+            x <- truncnorm::dtruncnorm(states, 0, max(states), nextpop, sigma * nextpop)
+            if(sum(x) <= 0){ 
+              x  <- c(1, rep(0, n_s - 1))
+            } else {
+              x <- x / sum(x)
+            }
+          }
+          transition[k, , i] <- x
+      }
+  }
+  if(any(is.na(transition))) stop("error creating transition matrix")
+transition
+}
+```
+
+```{r}
+## `actions` is an argument of indices, not necessarily the action values themselves 
+sim <- function (transition,  x0, Tmax, action = rep(1, Tmax)){
+    n_states <- dim(transition)[2]
+    state <- numeric(Tmax + 1)
+    state[1] <- x0
+    time <- 1:Tmax
+    for (t in time) {
+        state[t + 1] <- base::sample(1:n_states, 
+                               1, 
+                               prob = transition[state[t], , action[t]])
+    }
+    data.frame(time = 1:Tmax, state = state[time])
+}
+```
+
+
+
+```{r}
+P_ghost <- transition_matrix(states, actions, may(27.2), p$sigma)
+P_weak_attractor <- transition_matrix(states, actions, may(27.6), p$sigma)
+P_bistable <- transition_matrix(states, actions, may(28), p$sigma)
+```
+
+
+```{r}
+x0 <- which.min(abs(states - p$x0))
+Tmax <- 200
+set.seed(12345)
+reps <- 50
+ghost_sim <- map_dfr(1:reps, function(i)
+  sim(P_ghost, x0, Tmax)  %>% mutate(state = states[state], scenario = "ghost"),
+  .id = "rep")
+weak <- map_dfr(1:reps, function(i)
+  sim(P_weak_attractor, x0, Tmax)  %>% mutate(state = states[state], scenario = "bistable"),
+  .id = "rep")
+bistable  <- map_dfr(1:reps, function(i)
+  sim(P_bistable, x0, Tmax)  %>% mutate(state = states[state], scenario = "bistable"),
+  .id = "rep")
+```
+
+
+
+```{r}
+#fig1_sims <- read_csv("../decisions-vs-transients/manuscript/manuscript_cache/fig1_sims.csv")
+#bistable <- fig1_sims %>% filter(scenario == "bistable")
+rep1 <- weak %>% filter(rep == 2, time <= 100) %>% select(time, state)
+```
+
+```{r}
+rep1 %>%
+  ggplot(aes(time, state)) + 
+  geom_line(lwd=1.5, col = pal[1]) 
+
+```
+
+---
+
+````{r}
+horizon <- 200
+marble <- rep1 %>%
+    as_tsibble(index = time) %>%
+  model(nn = NNETAR(state))
+fable <- marble %>% 
+  forecast(h = horizon, PI=TRUE) 
+fc <- fable %>%
+  mutate(sd = map_dbl(.distribution, function(x) sd(x[[1]][[1]])))
+
+
+rep1 %>% filter(time <= 100) %>%
+  ggplot(aes(time, state)) + 
+  geom_line(lwd=1.5, col = pal[1]) + 
+  geom_line(data = fc, aes(time, state), lwd=1.5) + 
+  geom_ribbon(data = fc, aes(time, state, ymin = state - 2 *sd, ymax = state + 2 * sd ), 
+              col=NA, alpha = 0.2) + 
+  coord_cartesian(xlim= c(0,100+ horizon), ylim = c(0,60))
+
+```
