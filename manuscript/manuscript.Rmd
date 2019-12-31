@@ -82,7 +82,7 @@ may <- function(a){
 }
 ```
 
-```{r fig_model, fig.cap="Change in population size $X_{t+1} - X_t = f(X_t)$. Equilibria occur when the change curve crosses zero, stable points arise at crossings with negative slopes, unstable equilibria have positive slopes.  By changing parameter $a$, the system goes from bistable (red, $a = 28$) to a ghost attractor (blue, $a = 27.2$). For both curves, $r = 0.8$, $K = 153$, $Q = 2$, $H = 20$."}
+```{r figure1, fig.cap="Change in population size $X_{t+1} - X_t = f(X_t)$. Equilibria occur when the change curve crosses zero, stable points arise at crossings with negative slopes, unstable equilibria have positive slopes.  By changing parameter $a$, the system goes from bistable (red, $a = 28$) to a ghost attractor (blue, $a = 27.2$). For both curves, $r = 0.8$, $K = 153$, $Q = 2$, $H = 20$."}
 
 ## Fig 1
 
@@ -173,7 +173,7 @@ fig1_sims <- bind_rows(ghost_sim, bistable_sim)
 write_csv(fig1_sims, "manuscript_cache/fig1_sims.csv")
 ```
 
-```{r fig_sims}
+```{r figure2}
 # Fig 2
 fig1_sims %>%
   ggplot(aes(time, state, group = interaction(rep, scenario), col= scenario)) + 
@@ -249,7 +249,7 @@ policy_plot <-
 write_csv(policy_plot, "manuscript_cache/policy_plot.csv")
 ```
 
-```{r fig_policy, fig.cap="Optimal policy functions under each model. Parameter values for utility function used here are $c = 1$, $d = 0.5$, $X_0 = 50$, $\delta = 0.999$, parameters for the transition models are as given in Fig 1. "}
+```{r figure3, fig.cap="Optimal policy functions under each model. Parameter values for utility function used here are $c = 1$, $d = 0.5$, $X_0 = 50$, $\\delta = 0.999$, parameters for the transition models are as given in Fig 1."}
 ## Fig 3
 
 policy_plot %>%
@@ -285,7 +285,7 @@ fixed_sims %>% write_csv("manuscript_cache/fixed_sims.csv")
 We can get a better idea of the consequences of mistaking the long transient dynamics for stable state dynamics by examining the dynamics of a system when it is actively managed according to the policy function for the wrong model.  It is important to note that even when the policy wrongly assumes the system has an endemic stable state (e.g. small beetle population density), this does not necessarily mean that the manager will never intervene and the dynamics will reach the high stable state unchecked. As we see in the policy function, at low densities, the alternative stable state policy does indeed choose to do nothing, since it expects the density to remain around an acceptable endemic level.  However, once the densities get high enough (the system escapes the ghost attractor), the manager intervenes -- but this intervention is only enough to restore the system to the endemic state.  This results in a pattern of perpetual interventions. Simulations of 10 independent realizations of a ghost-attractor system being managed with the optimal policy of the alternative stable state model (Fig 4, upper panel).  In contrast, had the manager known the system no longer supported the endemic stable state but had only a ghost attractor, the optimal policy is a costly up-front intervention which eliminates the beetle entirely (Fig 4, lower panel).  A comparison between the large up front cost of the optimally managed realizations to the ever rising costs of the mistaken case can be seen in Fig 5, shown in terms of net present value (i.e. cumulative costs, where future costs have been discounted by rate $\delta$.)  The examples shown here use a relatively small discount rate of 0.999 per unit time -- under sufficiently agressive discounting this large up-front investment would not be optimal.  (Note that we use the term "small" meaning relative to the timescale shown, e.g. the value at time 200 is worth $0.999^{200} \approx 81.86\%$ of its starting value. As the units of time here correspond to the generation time of the beetle, this shouldn't be confused with an *annual* discount rate.)
 
 
-```{r fig_sims_by_prior}
+```{r figure4}
 # Fig 4
 fixed_sims <- read_csv("manuscript_cache/fixed_sims.csv")
 
@@ -299,7 +299,7 @@ fixed_sims %>% select(state, action, time, prior, reps) %>%
 
 
 
-```{r}
+```{r figure5}
 costs <- fixed_sims %>% group_by(time, prior)  %>% 
   summarise(cost = mean(value)) %>%
   group_by(prior) %>%
@@ -376,7 +376,7 @@ sims_by_prior %>% write_csv("manuscript_cache/sims_by_prior.csv")
 
 ```
 
-```{r fig_sims_by_prior}
+```{r figure6}
 ## Fig 6
 
 sims_by_prior <- read_csv("manuscript_cache/sims_by_prior.csv")
@@ -400,7 +400,6 @@ In other words, our optimal manager not only plans over the uncertainty, but als
 
 
 ```{r mdp_learning}
-# Fig 7
 set.seed(12345)
 Tmax <- 50
 learning <- mdp_learning(list(P_ghost, P_bistable), reward, discount, 
@@ -415,8 +414,8 @@ write_csv(learning$posterior, "manuscript_cache/learning_posterior.csv")
 
 
 
-```{r fig_learning_sim}
-# Fig 8
+```{r figure7}
+# Fig 7
  learning$df %>% 
   select(-value) %>% 
   gather(series, state, -time) %>% 
@@ -425,7 +424,7 @@ write_csv(learning$posterior, "manuscript_cache/learning_posterior.csv")
 
 
 
-```{r fig_learning_posterior}
+```{r figure8}
 model_names <- c("Ghost", "Bistable")
 learning$posterior %>% 
   data.frame(time = 1:Tmax) %>%
@@ -456,7 +455,9 @@ Implications:
 
 - Long transients can be misleading -- e.g. mistaking a ghost attractor for a stable state.
 - These mistakes can be significant, since long transients require qualitatively different management strategies.
-- Nevertheless, thes
+- Decision-theoretic approaches provide a way to manage this uncertainty
+
+Markov Decision Processes are an active area of research in robotics and artificial intelligence community, though terminology differs substantially.  
 
 
 # Numerical Methods
