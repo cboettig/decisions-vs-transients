@@ -440,24 +440,24 @@ learning$posterior %>%
 # Discussion
 
 
-Long transients. Equilibrium.
+While the importance of long transients to ecological dynamics is now being recognized, greater understanding of the consequences this realization has for ecological management is still needed. For instance, @Hastings2018 discusses the potential implications that long transients have the management of ecosystems, including the situation we have considered here:
+
+> In other cases, when it is difficult to distinguish whether observed dynamics are transient or at equilibrium, models of both possibilities can be developed to test the sensitivity of proposed management strategies to the model assumptions,
+
+while also calling for closer study of those consequences:
+
+> A full treatment of the management consequences and opportunities presented by long transients re- quires further attention
+
+In this analysis, I have attempted to provide a more detailed treatment of the management consequences of just such a long transient by focusing on a minimal model capable of producing ghost-attractor dynamics.  This model captures common ecological management scenarios, such as the outbreak of a bark beetle pest we have focused on here, and could easily be generalized to other typical ecological management problems which also involve tipping-point dynamics.  As the name implies, ecological *management* is typically not a single decision-point, but rather, a *sequential decision process*, where a manager implements a policy over time and may adjust that policy in response to future observations.  I have drawn on methods from optimal control theory, stochastic dynamic programming in particular, to explore how a manager responds to the possible outbreak of a bark beetle infestation when there is uncertainty as to whether the observed dynamics are a transient or equilbrium phase.  
+
+From this analysis, several conclusions emerge.  First, we have a clear illustration of just how misleading long transient dynamics can appear -- without access to multiple replicate realizations (which is nearly always the case in real systems), distinguishing between transient dynamics and stable dynamics in the same system from purely observational data will always be difficult. (A more formal consideration of this statistical inference problem is treated in Reimer et al, intended for this same issue of Theoretical Ecology). Second, we see that this miss-identification leads to qualitatively different management outcomes, even when management is dynamic and following an optimal policy for a closely related model.  In particular, in our example, a manager accumulats an ever-growing cost of coping with the outbreak while never fully eliminating the threat.  
+
+Despite these differences, we have also seen that dynamic and adaptive management approaches can nevertheless be an effective mechanism to cope with the uncertainty posed by long transients.  First, it is important to note that all dynamic management scenarios succeed in preventing the outbreak even without the correct model.  Because an outbreak is still possible under the stable state scenario due to stochastic tipping, the optimal manager still responds to high beetle densities.  This highlights the importance of properly understanding the management context and the decision space in order to understand management implications -- management is a socio-ecological problem and can never be understood from the ecological dimension alone.  
+
+Second, we observe that a manager can build the uncertainty over the two scenarios into the decision process.  Once there is sufficient probability that the system is in a long transient sustained by a ghost attractor rather than in a true equilibrium, the manager reaches the identical optimal policy as would a manager with perfect knowledge of which model is correct.  Perfect information is not required for perfect management.  We see a second illustration of this fact when we consider an adaptive management approach, which attempts to learn the true model over the course of management.  Adaptive management does indeed allow the manager to correctly adjust probabilities each model is true.  However, learning does not continue indefinitely, since once the probability of a ghost attractor becomes high enough, the manager eliminates the beetles and with it, any potential for further learning.
 
 
-
-Note that this approach can equally well consider an arbitrary suite of models (i.e. varying the parameter $a$ over a range of values, as well as to models with completely different structure).
-
-Not considered:
-
-- partially observed optimal control
-- non-stationary dynamics e.g. in which 
-
-Implications: 
-
-- Long transients can be misleading -- e.g. mistaking a ghost attractor for a stable state.
-- These mistakes can be significant, since long transients require qualitatively different management strategies.
-- Decision-theoretic approaches provide a way to manage this uncertainty
-
-Markov Decision Processes are an active area of research in robotics and artificial intelligence community, though terminology differs substantially.  
+Several caveats about this analysis must be noted.  First, I underscore that this is not intended to be a precise model of bark beetle dynamics, but rather a general model  [sensu @Levins1966] to explore the management consequences of confusing a ghost attractor for an alternative stable state.  A precise model would depend on ecological details of forest and beetle dynamics (including spatially explicit dynamics), as well as the details of management interventions and associated costs.  Second, for simplicity, we have assumed that while our manager does not know whether the system has multiple equilibria or a ghost attractor, the manager does know most other details about the system.  Importantly, we have assumed the manager observes the current population size without error before each action.  In reality, any such observation would be accompanied by some uncertainty, making the decision problem into a Partially Observed Markov Decision Process (POMDP), increasing the complexity dramatically [e.g. @pomdp-intro].  I have also assumed the manager has knowledge of the general model structure.  This assumption can be relaxed in much the same way in which introduced model uncertainty, allowing one to consider an arbitrary suite of models (i.e. varying the parameter $a$ over a range of values, as well as to models with completely different structure).  However, the curse of dimensionality imposes obvious limitations on this.  Moreover, the approach assumes that while the ecological dynamics can be transient, the environment in which they occur is stationary (i.e. model parameters are constant.)  It is worth noting that these all of these issues in Markov Decision Processes are active areas of research in the robotics and artificial intelligence community, and recent advances in reinforcement learning could provide a promising way forward for many ecological management problems as well [e.g. @pnas].  
 
 
 # Numerical Methods
