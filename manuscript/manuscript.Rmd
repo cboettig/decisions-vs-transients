@@ -20,8 +20,11 @@ output: rticles::elsevier_article
 
 ```{r include = FALSE}
 knitr::opts_chunk$set(echo = FALSE, cache = 1,  
-                      dev = "cairo_pdf", fig.width=4.5, 
-                      fig.height=3.5, message = FALSE,
+                      dev = "cairo_pdf", 
+                      fig.width=4.5, 
+                      fig.height=3.5, 
+                      fig.align = "center",
+                      message = FALSE,
                       warning = FALSE)
 library(hrbrthemes)
 library(Cairo)
@@ -173,11 +176,11 @@ fig1_sims <- bind_rows(ghost_sim, bistable_sim)
 write_csv(fig1_sims, "manuscript_cache/fig1_sims.csv")
 ```
 
-```{r figure2}
+```{r figure2, fig.cap="50 replicate simulations with identical starting conditions ($X_0 = 21$) of each scenario with parameter values as given in Fig 1. While the ensemble of 50 replicates clearly appears more stable than the ghost attractor, individual replicates may be difficult to distingush."}
 # Fig 2
 fig1_sims %>%
-  ggplot(aes(time, state, group = interaction(rep, scenario), col= scenario)) + 
-  geom_line(alpha=0.3) + scale_color_solarized() + facet_wrap(~scenario)
+  ggplot(aes(time, state, group = interaction(rep, scenario), col = scenario)) + 
+  geom_line(alpha=0.3) + scale_color_solarized() + facet_wrap(~scenario, ncol = 1)
 ```
 
 This ambiguity is accentuated considerably if we are tasked with forecasting the future behavior having only observed the system during the early part of a trajectory (i.e. in the vicinity of the ghost attractor or lower stable point).  Long transients under the influence of the ghost attractor can easily be mistaken for stable node dynamics, but will have considerably greater probability of suddenly transitioning to the outbreak state than trajectories under alternate stable state dynamics in the short term.  
@@ -285,7 +288,7 @@ fixed_sims %>% write_csv("manuscript_cache/fixed_sims.csv")
 We can get a better idea of the consequences of mistaking the long transient dynamics for stable state dynamics by examining the dynamics of a system when it is actively managed according to the policy function for the wrong model.  It is important to note that even when the policy wrongly assumes the system has an endemic stable state (e.g. small beetle population density), this does not necessarily mean that the manager will never intervene and the dynamics will reach the high stable state unchecked. As we see in the policy function, at low densities, the alternative stable state policy does indeed choose to do nothing, since it expects the density to remain around an acceptable endemic level.  However, once the densities get high enough (the system escapes the ghost attractor), the manager intervenes -- but this intervention is only enough to restore the system to the endemic state.  This results in a pattern of perpetual interventions. Simulations of 10 independent realizations of a ghost-attractor system being managed with the optimal policy of the alternative stable state model (Fig 4, upper panel).  In contrast, had the manager known the system no longer supported the endemic stable state but had only a ghost attractor, the optimal policy is a costly up-front intervention which eliminates the beetle entirely (Fig 4, lower panel).  A comparison between the large up front cost of the optimally managed realizations to the ever rising costs of the mistaken case can be seen in Fig 5, shown in terms of net present value (i.e. cumulative costs, where future costs have been discounted by rate $\delta$.)  The examples shown here use a relatively small discount rate of 0.999 per unit time -- under sufficiently agressive discounting this large up-front investment would not be optimal.  (Note that we use the term "small" meaning relative to the timescale shown, e.g. the value at time 200 is worth $0.999^{200} \approx 81.86\%$ of its starting value. As the units of time here correspond to the generation time of the beetle, this shouldn't be confused with an *annual* discount rate.)
 
 
-```{r figure4}
+```{r figure4, fig.cap = "Simulations of dynamic management"}
 # Fig 4
 fixed_sims <- read_csv("manuscript_cache/fixed_sims.csv")
 
@@ -457,7 +460,7 @@ Despite these differences, we have also seen that dynamic and adaptive managemen
 Second, we observe that a manager can build the uncertainty over the two scenarios into the decision process.  Once there is sufficient probability that the system is in a long transient sustained by a ghost attractor rather than in a true equilibrium, the manager reaches the identical optimal policy as would a manager with perfect knowledge of which model is correct.  Perfect information is not required for perfect management.  We see a second illustration of this fact when we consider an adaptive management approach, which attempts to learn the true model over the course of management.  Adaptive management does indeed allow the manager to correctly adjust probabilities each model is true.  However, learning does not continue indefinitely, since once the probability of a ghost attractor becomes high enough, the manager eliminates the beetles and with it, any potential for further learning.
 
 
-Several caveats about this analysis must be noted.  First, I underscore that this is not intended to be a precise model of bark beetle dynamics, but rather a general model  [sensu @Levins1966] to explore the management consequences of confusing a ghost attractor for an alternative stable state.  A precise model would depend on ecological details of forest and beetle dynamics (including spatially explicit dynamics), as well as the details of management interventions and associated costs.  Second, for simplicity, we have assumed that while our manager does not know whether the system has multiple equilibria or a ghost attractor, the manager does know most other details about the system.  Importantly, we have assumed the manager observes the current population size without error before each action.  In reality, any such observation would be accompanied by some uncertainty, making the decision problem into a Partially Observed Markov Decision Process (POMDP), increasing the complexity dramatically [e.g. @pomdp-intro].  I have also assumed the manager has knowledge of the general model structure.  This assumption can be relaxed in much the same way in which introduced model uncertainty, allowing one to consider an arbitrary suite of models (i.e. varying the parameter $a$ over a range of values, as well as to models with completely different structure).  However, the curse of dimensionality imposes obvious limitations on this.  Moreover, the approach assumes that while the ecological dynamics can be transient, the environment in which they occur is stationary (i.e. model parameters are constant.)  It is worth noting that these all of these issues in Markov Decision Processes are active areas of research in the robotics and artificial intelligence community, and recent advances in reinforcement learning could provide a promising way forward for many ecological management problems as well [e.g. @pnas].  
+Several caveats about this analysis must be noted.  First, I underscore that this is not intended to be a precise model of bark beetle dynamics, but rather a general model  [sensu @Levins1966] to explore the management consequences of confusing a ghost attractor for an alternative stable state.  A precise model would depend on ecological details of forest and beetle dynamics (including spatially explicit dynamics), as well as the details of management interventions and associated costs.  Second, for simplicity, we have assumed that while our manager does not know whether the system has multiple equilibria or a ghost attractor, the manager does know most other details about the system.  Importantly, we have assumed the manager observes the current population size without error before each action.  In reality, any such observation would be accompanied by some uncertainty, making the decision problem into a Partially Observed Markov Decision Process (POMDP), increasing the complexity dramatically [e.g. @pomdp-intro].  I have also assumed the manager has knowledge of the general model structure.  This assumption can be relaxed in much the same way in which introduced model uncertainty, allowing one to consider an arbitrary suite of models (i.e. varying the parameter $a$ over a range of values, as well as to models with completely different structure).  However, the curse of dimensionality imposes obvious limitations on this.  Moreover, the approach assumes that while the ecological dynamics can be transient, the environment in which they occur is stationary (i.e. model parameters are constant.)  It is worth noting that these all of these issues in Markov Decision Processes are active areas of research in the robotics and artificial intelligence community, and recent advances in reinforcement learning could provide a promising way forward for many ecological management problems as well [e.g. @pnas; or see @deep-rl for an overview].  
 
 
 # Numerical Methods
