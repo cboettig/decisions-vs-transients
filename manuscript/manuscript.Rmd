@@ -431,7 +431,8 @@ learning$posterior %>%
   gather(param, probability, -time, factor_key =TRUE) %>% 
   mutate(param = model_names[as.integer(param)]) %>% 
   ggplot(aes(x = param, y = probability, group = time, alpha = time)) + 
-  geom_bar(stat="identity", position = "identity", show.legend = FALSE, fill=pal[1])
+  geom_bar(stat="identity", position = "identity", show.legend = FALSE, fill=pal[1]) + 
+  xlab("Model")
 ```
 
 
@@ -466,6 +467,9 @@ Another caveat regards the inevitable simplifying assumptions we have introduced
 
 Stochastic dynamic programming solutions were computed in R [@R] using the value iteration stochastic dynamic programming algorithm [@Mangel1985; @Marescot2013].  Generic R functions for the stochastic dynamic programming, including both planning over model uncertainty and adaptive management for actively learning over model uncertainty, are supplied in the supplementary R package `mdplearning`, available at <https://github.com/boettiger-lab/mdplearning>, v0.1.0 [@mdplearning].  Code to reproduce the analysis, simulations and figures shown here can be found at <https://github.com/cboettig/decisions-vs-transients>.  
 
+# Acknowledgements
+
+This work was inspired and influenced many discussions at the 2019 NIMBioS workshop on transient dynamics in ecology, and the 2019 organized oral session on ecological transients.  CB also acknowledges computational resources from NSF's XSEDE Jetstream (DEB160003) and Chameleon cloud platforms, as well as the support from UC Berkeley and the USDA Hatch project CA-B-INS-0162-H.
 
 
 \pagebreak 
