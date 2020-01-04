@@ -24,8 +24,10 @@ keywords:
   - ecological management
 preamble: |
   \journal{Theoretical Ecology}
-  \usepackage{lineno}
-  \linenumbers
+
+## EditorialManager adds its own linenumbers to pdf already
+#\usepackage{lineno}
+# \linenumbers
 
 
 ---
