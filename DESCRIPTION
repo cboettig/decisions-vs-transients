@@ -1,8 +1,8 @@
 Package: compendium
 Project: Ecological management of stochastic systems with long transients
 Version: 0.2.0
-Depends: tidyverse
-Suggests: rmarkdown, testthat, lintr, knitr
+Depends: tidyverse, mdplearning
+Suggests: rmarkdown, testthat, lintr, knitr, hrbrthemes, patchwork, Cairo, ggthemes, ggtext
 License: CC0
 Title: Compendium Package
 Description: A template for a research compendium.  Modify this
@@ -14,3 +14,4 @@ Authors@R: c(person("Carl", "Boettiger",
 RoxygenNote: 6.1.1
 Encoding: UTF-8
 VignetteBuilder: knitr
+Remotes: boettiger-lab/mdplearning, thomasp85/patchwork, clauswilke/ggtext

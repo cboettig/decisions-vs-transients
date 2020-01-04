@@ -15,6 +15,13 @@ journal: Theoretical ecology
 layout: 3p
 bibliography: refs.bib
 output: rticles::elsevier_article
+keywords: 
+  - transients, 
+  - optimal control, 
+  - adaptive management, 
+  - stochasticity, 
+  - uncertainty, 
+  - ecological management
 preamble: |
   \journal{Theoretical Ecology}
   \usepackage{lineno}
