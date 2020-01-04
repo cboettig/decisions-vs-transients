@@ -3,4 +3,4 @@
 language: R
 cache: packages
 script:
-  - R -e 'rmarkdown::render("manuscript/manuscript.Rmd"))'
+  - R -e 'rmarkdown::render("manuscript/manuscript.Rmd")'
