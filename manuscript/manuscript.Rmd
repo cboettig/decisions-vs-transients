@@ -17,7 +17,9 @@ bibliography: refs.bib
 output: rticles::elsevier_article
 preamble: |
   \journal{Theoretical Ecology}
-  \usepackage[left]{lineno}
+  \usepackage{lineno}
+  \linenumbers
+
 
 ---
 
