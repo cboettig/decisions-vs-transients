@@ -1,7 +1,7 @@
 Package: compendium
 Project: Ecological management of stochastic systems with long transients
 Version: 0.2.0
-Depends: tidyverse, mdplearning
+Depends: tidyverse, mdplearning, truncnorm
 Suggests: rmarkdown, testthat, lintr, knitr, hrbrthemes, patchwork, Cairo, ggthemes, ggtext, rticles
 License: CC0
 Title: Compendium Package
