@@ -252,7 +252,7 @@ for(i in 1:length(states)){
 
 ## Optimal planning under transient dynamics vs stable state dynamics
 
-First, let us consider the case that in which the manager has been able to accurately infer the dynamics (i.e. correctly estimate the parameters of Eq \eqref{model}, and assuming the model structure postulated \eqref{model} is correct.  The optimal strategy determined by SDP can be represented as a "policy" function $p(X)$, indicating for each possible state $X$ what the optimal action $\hat A = p(X)$ would be.  Fig 3 displays the numerically computed optimal policy for the system with only a transient.  Though the models differ by only a small amount in a single parameter, because one model corresponds to a system with only a ghost attractor while the other has a stable state attractor, the resulting optimal policy solutions differ significantly.  Intuitively, in the system with stable state dynamics, the manager does not implement any control at low levels, where the presence of the lower stable state will constrain the beetle population to acceptable levels.  Once that lower stable state becomes only a ghost attractor, the optimal solution targets elimination of the beetle even at low densities.  Consequently, the optimal response becomes tightly dependent on our knowledge of the dynamics. 
+First, let us consider the case that in which the manager has been able to accurately infer the dynamics (i.e. correctly estimate the parameters of Eq \eqref{model}, and assuming the model structure postulated \eqref{model} is correct.  The optimal strategy determined by SDP can be represented as a "policy" function $p(X)$, indicating for each possible state $X$ what the optimal action $\hat A = p(X)$ would be.  Fig 3 displays the numerically computed optimal policy for the system with only a transient compared to the optimal policy for the bistable system.  Though the models differ by only a small amount in a single parameter, because one model corresponds to a system with only a ghost attractor while the other has a stable state attractor, the resulting optimal policy solutions differ significantly.  Intuitively, in the system with stable state dynamics, the manager does not implement any control at low levels, where the presence of the lower stable state will constrain the beetle population to acceptable levels.  Once that lower stable state becomes only a ghost attractor, the optimal solution targets elimination of the beetle even at low densities.  Consequently, the optimal response becomes tightly dependent on our knowledge of the dynamics. 
 
 
 ```{r mdp_solns}
@@ -301,8 +301,8 @@ sim_bistable <- map_dfr(1:reps, function(i)
                    x0 = x0, Tmax = Tmax), .id = "reps")
 
 fixed_sims <- 
- bind_rows(ghost = sim_ghost, 
-           bistable = sim_bistable, 
+ bind_rows("simulations under ghost policy function" = sim_ghost, 
+           "simulations under bistable policy function" = sim_bistable, 
            .id = "prior") %>% 
   mutate(state = states[state], 
          action = actions[action]) 
@@ -406,7 +406,8 @@ sims_by_prior  %>% select(state, action, time, prior, reps) %>%
   filter(time < 100) %>%
   ggplot(aes(time, state, group = interaction(line, reps), col=line)) + 
   geom_line(alpha=0.5) + 
-  facet_wrap(~prior, ncol=1)
+  facet_wrap(~prior, ncol=1) +
+  ylab("state or action")
 ```
 
 
@@ -437,6 +438,8 @@ write_csv(learning$posterior, "manuscript_cache/learning_posterior.csv")
 
 ```{r figure7, fig.cap="Simulated adaptive management of the forest-beetle system.  Initally each model is considered equally likely, and management aims at retaining a stable endemic population.  The manager learns over time (Fig 8), and decides to take more definitive action to eliminate the beetle pest."}
 # Fig 7
+learning <- list(df = read_csv("manuscript_cache/learning_df.csv"), 
+                 posterior = read_csv("manuscript_cache/learning_posterior.csv"))
  learning$df %>% 
   select(-value, -obs) %>% 
   gather(series, state, -time) %>% 
@@ -445,16 +448,16 @@ write_csv(learning$posterior, "manuscript_cache/learning_posterior.csv")
 
 
 
-```{r figure8, fig.cap="Learning through Adaptive Management of the forest-beetle system. Bars show the probabilities that each model is correct over the first 10 steps of the simulated management process shown in Fig 7.  Initial probabilities for each model are equal, and learning proceeds over the first 5 timesteps (shown in lighter shades in decreasing probability of the bistable model beign correct).  By the fifth iteration, the manager has opted to eliminate the beetles and further learning is no longer possible in this system."}
+```{r figure8, fig.cap="Learning through Adaptive Management of the forest-beetle system.  Initial probabilities for each model are equal, and learning proceeds over the next six timesteps (shown in lighter shades in decreasing probability of the bistable model beign correct).  By the sixth iteration, the manager has opted to eliminate the beetles and further learning is no longer possible in this system."}
 model_names <- c("Ghost", "Bistable")
 learning$posterior %>% 
   data.frame(time = 1:Tmax) %>%
-  filter(time %in% floor(seq(1,10, length.out=5))) %>%
-  gather(param, probability, -time, factor_key =TRUE) %>% 
-  mutate(param = model_names[as.integer(param)]) %>% 
-  ggplot(aes(x = param, y = probability, group = time, alpha = time)) + 
-  geom_bar(stat="identity", position = "identity", show.legend = FALSE, fill=pal[1]) + 
-  xlab("Model")
+  filter(time < 12) %>%
+  gather(model, probability, -time, factor_key =TRUE) %>% 
+  mutate(model = model_names[as.integer(model)]) %>% 
+  ggplot(aes(x = time, y = probability, col = model)) + geom_point() + 
+  geom_line()
+#  geom_bar(aes(x = param, y = probability, group = time, alpha = time), stat="identity", position = "identity", show.legend = FALSE, fill=pal[1]) +  xlab("Model")
 ```
 
 
