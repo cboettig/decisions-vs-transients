@@ -1,9 +1,13 @@
+---
+output: github_document
+---
+
 
 Encrypt to my public key:
 
 ```{r setup}
 library(gpg)
-library(curl)
+gpg::gpg_recv("3908E1CFD28B380C")
 ```
 
 
