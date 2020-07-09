@@ -304,8 +304,8 @@ sim_bistable <- map_dfr(1:reps, function(i)
                    x0 = x0, Tmax = Tmax), .id = "reps")
 
 fixed_sims <- 
- bind_rows("simulations under ghost policy function" = sim_ghost, 
-           "simulations under bistable policy function" = sim_bistable, 
+ bind_rows("sims under ghost policy" = sim_ghost, 
+           "sims under bistable policy" = sim_bistable, 
            .id = "prior") %>% 
   mutate(state = states[state], 
          action = actions[action]) 
@@ -343,7 +343,9 @@ costs <- fixed_sims %>% group_by(time, prior)  %>%
 costs %>%
   ggplot(aes(time, cost, ymin = 0, ymax = cost, fill=model)) +
   geom_ribbon(alpha = 0.5) +
-  ylab("Cost (net present value)") + xlab("time")
+  ylab("Cost (net present value)") +
+  xlab("time") +
+  theme(legend.position="bottom")
 ```
 
 
@@ -389,8 +391,8 @@ sim_seventythirty <- map_dfr(1:reps, function(i)
                    x0 = x0, Tmax = Tmax), .id = "reps")
 
 sims_by_prior <- 
- bind_rows(fifty_fifty = sim_fiftyfifty, 
-           seventy_thirty = sim_seventythirty, 
+ bind_rows("50-50 model prior" = sim_fiftyfifty, 
+           "70-30 model prior" = sim_seventythirty, 
            .id = "prior")  %>% 
   mutate(state = states[state], 
          action = actions[action]) 
